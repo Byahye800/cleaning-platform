@@ -57,7 +57,7 @@ export default function AdminClientsPage() {
     setError(null);
     try {
       const payload: any = {
-        user_id: form.user_id,
+        user_id: form.user_id || null,
         name: form.name,
         address: form.address,
         contact_email: form.contact_email,
@@ -85,7 +85,7 @@ export default function AdminClientsPage() {
     setError(null);
     try {
       const payload: any = {
-        user_id: form.user_id,
+        user_id: form.user_id || null,
         name: form.name,
         address: form.address,
         contact_email: form.contact_email,
