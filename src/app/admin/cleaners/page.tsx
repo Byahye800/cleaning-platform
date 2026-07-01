@@ -7,18 +7,38 @@ type CleanerRow = {
   id: string;
   user_id: string;
   name: string;
+  email: string;
+  phone: string | null;
   hourly_rate: number | string;
-  utr_number: string | null;
+  dbs_status: string | null;
+  dbs_check_date: string | null;
+  emergency_contact: string | null;
+  skills: string[] | null;
+  notes: string | null;
   status: string;
 };
 
 const emptyForm: any = {
   user_id: '',
   name: '',
+  email: '',
+  phone: '',
   hourly_rate: '',
-  utr_number: '',
+  dbs_status: 'pending',
+  dbs_check_date: '',
+  emergency_contact: '',
+  skills: '',
+  notes: '',
   status: 'active',
 };
+
+function parseSkills(input: string): string[] | null {
+  const arr = input
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return arr.length ? arr : null;
+}
 
 export default function AdminCleanersPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
@@ -50,10 +70,16 @@ export default function AdminCleanersPage() {
     setError(null);
     try {
       const payload: any = {
-        user_id: form.user_id,
+        user_id: form.user_id || null,
         name: form.name,
+        email: form.email,
+        phone: form.phone || null,
         hourly_rate: form.hourly_rate === '' ? null : Number(form.hourly_rate),
-        utr_number: form.utr_number === '' ? null : form.utr_number,
+        dbs_status: form.dbs_status || null,
+        dbs_check_date: form.dbs_check_date || null,
+        emergency_contact: form.emergency_contact || null,
+        skills: parseSkills(form.skills),
+        notes: form.notes || null,
         status: form.status,
       };
 
@@ -78,8 +104,14 @@ export default function AdminCleanersPage() {
     setForm({
       user_id: r.user_id,
       name: r.name,
+      email: r.email,
+      phone: r.phone ?? '',
       hourly_rate: String(r.hourly_rate ?? ''),
-      utr_number: r.utr_number ?? '',
+      dbs_status: r.dbs_status ?? 'pending',
+      dbs_check_date: r.dbs_check_date ?? '',
+      emergency_contact: r.emergency_contact ?? '',
+      skills: (r.skills ?? []).join(', '),
+      notes: r.notes ?? '',
       status: r.status,
     });
   }
@@ -89,10 +121,16 @@ export default function AdminCleanersPage() {
     setError(null);
     try {
       const payload: any = {
-        user_id: form.user_id,
+        user_id: form.user_id || null,
         name: form.name,
+        email: form.email,
+        phone: form.phone || null,
         hourly_rate: Number(form.hourly_rate),
-        utr_number: form.utr_number === '' ? null : form.utr_number,
+        dbs_status: form.dbs_status || null,
+        dbs_check_date: form.dbs_check_date || null,
+        emergency_contact: form.emergency_contact || null,
+        skills: parseSkills(form.skills),
+        notes: form.notes || null,
         status: form.status,
       };
       if (Number.isNaN(payload.hourly_rate)) throw new Error('hourly_rate must be a valid number');
@@ -144,8 +182,34 @@ export default function AdminCleanersPage() {
         <div style={gridStyle}>
           <Field label="user_id (auth.users UUID)" value={form.user_id} onChange={(v) => setForm((p: any) => ({ ...p, user_id: v }))} placeholder="UUID" />
           <Field label="name" value={form.name} onChange={(v) => setForm((p: any) => ({ ...p, name: v }))} placeholder="John Doe Cleaning" />
+          <Field label="email" value={form.email} onChange={(v) => setForm((p: any) => ({ ...p, email: v }))} placeholder="cleaner@example.com" />
+          <Field label="phone" value={form.phone} onChange={(v) => setForm((p: any) => ({ ...p, phone: v }))} placeholder="Optional" />
           <Field label="hourly_rate" value={form.hourly_rate} onChange={(v) => setForm((p: any) => ({ ...p, hourly_rate: v }))} placeholder="e.g. 18.50" />
-          <Field label="utr_number" value={form.utr_number} onChange={(v) => setForm((p: any) => ({ ...p, utr_number: v }))} placeholder="Optional" />
+          <SelectField
+            label="dbs_status"
+            value={form.dbs_status}
+            onChange={(v) => setForm((p: any) => ({ ...p, dbs_status: v }))}
+            options={['pending', 'clear', 'flagged', 'expired']}
+          />
+          <Field
+            label="dbs_check_date"
+            type="date"
+            value={form.dbs_check_date}
+            onChange={(v) => setForm((p: any) => ({ ...p, dbs_check_date: v }))}
+          />
+          <Field
+            label="emergency_contact"
+            value={form.emergency_contact}
+            onChange={(v) => setForm((p: any) => ({ ...p, emergency_contact: v }))}
+            placeholder="Optional"
+          />
+          <Field
+            label="skills (comma-separated)"
+            value={form.skills}
+            onChange={(v) => setForm((p: any) => ({ ...p, skills: v }))}
+            placeholder="windows, deep-clean, carpets"
+          />
+          <Field label="notes" value={form.notes} onChange={(v) => setForm((p: any) => ({ ...p, notes: v }))} placeholder="Optional" />
           <SelectField label="status" value={form.status} onChange={(v) => setForm((p: any) => ({ ...p, status: v }))} options={['pending', 'active', 'disabled']} />
         </div>
 
@@ -166,7 +230,8 @@ export default function AdminCleanersPage() {
             <thead>
               <tr>
                 <th style={thStyle}>Name</th>
-                <th style={thStyle}>UTR</th>
+                <th style={thStyle}>Email</th>
+                <th style={thStyle}>DBS status</th>
                 <th style={thStyle}>Status</th>
                 <th style={thStyle}>Hourly</th>
                 <th style={thStyle}>Actions</th>
@@ -175,7 +240,7 @@ export default function AdminCleanersPage() {
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ padding: 12, color: '#6b7280' }}>
+                  <td colSpan={6} style={{ padding: 12, color: '#6b7280' }}>
                     No rows (or RLS denied SELECT).
                   </td>
                 </tr>
@@ -190,7 +255,8 @@ export default function AdminCleanersPage() {
                         {r.name}
                       </button>
                     </td>
-                    <td style={tdStyle}>{r.utr_number ?? ''}</td>
+                    <td style={tdStyle}>{r.email}</td>
+                    <td style={tdStyle}>{r.dbs_status ?? ''}</td>
                     <td style={tdStyle}>{r.status}</td>
                     <td style={tdStyle}>{String(r.hourly_rate ?? '')}</td>
                     <td style={tdStyle}>
@@ -218,11 +284,23 @@ export default function AdminCleanersPage() {
   );
 }
 
-function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = 'text',
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+}) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <span style={{ fontSize: 12, color: '#6b7280' }}>{label}</span>
-      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} style={inputStyle} />
+      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} style={inputStyle} />
     </label>
   );
 }
