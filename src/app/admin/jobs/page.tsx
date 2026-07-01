@@ -5,34 +5,33 @@ import { createSupabaseBrowserClient } from '@/lib/supabaseClient';
 
 type ClientRow = { id: string; name: string };
 
-type RecurrenceRuleRow = {
-  id: string;
-  frequency: string;
-  start_date: string;
-  end_date: string | null;
-};
+type CleanerRow = { id: string; name: string };
 
 type JobRow = {
   id: string;
   client_id: string;
-  recurrence_rule_id: string | null;
-  location: string;
-  location_lat: number;
-  location_lng: number;
-  geofence_radius_m: number;
-  access_instructions: string | null;
+  cleaner_id: string | null;
+  address: string;
+  service_type: string | null;
+  scheduled_date: string | null;
+  scheduled_time: string | null;
+  duration_hours: number | null;
+  price: number | null;
+  notes: string | null;
   status: string;
 };
 
 const emptyForm: any = {
   client_id: '',
-  recurrence_rule_id: '',
-  location: '',
-  location_lat: '',
-  location_lng: '',
-  geofence_radius_m: '100',
-  access_instructions: '',
-  status: 'active',
+  cleaner_id: '',
+  address: '',
+  service_type: '',
+  scheduled_date: '',
+  scheduled_time: '',
+  duration_hours: '',
+  price: '',
+  notes: '',
+  status: 'pending',
 };
 
 export default function AdminJobsPage() {
@@ -46,11 +45,11 @@ export default function AdminJobsPage() {
 
   const [rows, setRows] = useState<JobRow[]>([]);
   const [clients, setClients] = useState<ClientRow[]>([]);
-  const [rules, setRules] = useState<RecurrenceRuleRow[]>([]);
+  const [cleaners, setCleaners] = useState<CleanerRow[]>([]);
 
   async function loadAll() {
     setError(null);
-    const [jobsRes, clientsRes, rulesRes] = await Promise.all([
+    const [jobsRes, clientsRes, cleanersRes] = await Promise.all([
       supabase
         .from('jobs')
         .select('*')
@@ -62,19 +61,19 @@ export default function AdminJobsPage() {
         .order('created_at', { ascending: false })
         .limit(200),
       supabase
-        .from('recurrence_rules')
-        .select('id, frequency, start_date, end_date')
+        .from('cleaners')
+        .select('id, name')
         .order('created_at', { ascending: false })
         .limit(200),
     ]);
 
     if (jobsRes.error) throw jobsRes.error;
     if (clientsRes.error) throw clientsRes.error;
-    if (rulesRes.error) throw rulesRes.error;
+    if (cleanersRes.error) throw cleanersRes.error;
 
     setRows((jobsRes.data ?? []) as any);
     setClients((clientsRes.data ?? []) as any);
-    setRules((rulesRes.data ?? []) as any);
+    setCleaners((cleanersRes.data ?? []) as any);
   }
 
   useEffect(() => {
@@ -82,28 +81,37 @@ export default function AdminJobsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  function buildPayload() {
+    const payload: any = {
+      client_id: form.client_id,
+      cleaner_id: form.cleaner_id ? form.cleaner_id : null,
+      address: form.address,
+      service_type: form.service_type || null,
+      scheduled_date: form.scheduled_date || null,
+      scheduled_time: form.scheduled_time || null,
+      duration_hours: form.duration_hours ? Number(form.duration_hours) : null,
+      price: form.price ? Number(form.price) : null,
+      notes: form.notes || null,
+      status: form.status || 'pending',
+    };
+
+    if (!payload.client_id) throw new Error('client_id is required');
+    if (!payload.address) throw new Error('address is required');
+    if (form.duration_hours && Number.isNaN(payload.duration_hours)) {
+      throw new Error('duration_hours must be a number');
+    }
+    if (form.price && Number.isNaN(payload.price)) {
+      throw new Error('price must be a number');
+    }
+
+    return payload;
+  }
+
   async function createJob() {
     setBusy(true);
     setError(null);
     try {
-      const payload: any = {
-        client_id: form.client_id,
-        recurrence_rule_id: form.recurrence_rule_id ? form.recurrence_rule_id : null,
-        location: form.location,
-        location_lat: Number(form.location_lat),
-        location_lng: Number(form.location_lng),
-        geofence_radius_m: Number(form.geofence_radius_m),
-        access_instructions: form.access_instructions || null,
-        status: form.status,
-      };
-
-      if (!payload.client_id) throw new Error('client_id is required');
-      if (!payload.location) throw new Error('location is required');
-      if (Number.isNaN(payload.location_lat) || Number.isNaN(payload.location_lng)) {
-        throw new Error('location_lat and location_lng must be numbers');
-      }
-      if (Number.isNaN(payload.geofence_radius_m)) throw new Error('geofence_radius_m must be a number');
-
+      const payload = buildPayload();
       const { error: insertError } = await supabase.from('jobs').insert(payload);
       if (insertError) throw insertError;
 
@@ -121,17 +129,7 @@ export default function AdminJobsPage() {
     setBusy(true);
     setError(null);
     try {
-      const payload: any = {
-        client_id: form.client_id,
-        recurrence_rule_id: form.recurrence_rule_id ? form.recurrence_rule_id : null,
-        location: form.location,
-        location_lat: Number(form.location_lat),
-        location_lng: Number(form.location_lng),
-        geofence_radius_m: Number(form.geofence_radius_m),
-        access_instructions: form.access_instructions || null,
-        status: form.status,
-      };
-
+      const payload = buildPayload();
       const { error: updateError } = await supabase.from('jobs').update(payload).eq('id', id);
       if (updateError) throw updateError;
 
@@ -167,12 +165,14 @@ export default function AdminJobsPage() {
     setSelectedId(r.id);
     setForm({
       client_id: r.client_id,
-      recurrence_rule_id: r.recurrence_rule_id ?? '',
-      location: r.location,
-      location_lat: String(r.location_lat),
-      location_lng: String(r.location_lng),
-      geofence_radius_m: String(r.geofence_radius_m),
-      access_instructions: r.access_instructions ?? '',
+      cleaner_id: r.cleaner_id ?? '',
+      address: r.address,
+      service_type: r.service_type ?? '',
+      scheduled_date: r.scheduled_date ?? '',
+      scheduled_time: r.scheduled_time ?? '',
+      duration_hours: r.duration_hours != null ? String(r.duration_hours) : '',
+      price: r.price != null ? String(r.price) : '',
+      notes: r.notes ?? '',
       status: r.status,
     });
   }
@@ -191,7 +191,7 @@ export default function AdminJobsPage() {
 
         <div style={gridStyle}>
           <label style={labelStyle}>
-            <span style={labelTextStyle}>client_id (clients.id)</span>
+            <span style={labelTextStyle}>Client</span>
             <select value={form.client_id} onChange={(e) => setForm((p: any) => ({ ...p, client_id: e.target.value }))} style={inputStyle}>
               <option value="">(select client)</option>
               {clients.map((c) => (
@@ -203,35 +203,48 @@ export default function AdminJobsPage() {
           </label>
 
           <label style={labelStyle}>
-            <span style={labelTextStyle}>recurrence_rule_id (optional)</span>
+            <span style={labelTextStyle}>Assigned cleaner</span>
             <select
-              value={form.recurrence_rule_id}
-              onChange={(e) => setForm((p: any) => ({ ...p, recurrence_rule_id: e.target.value }))}
+              value={form.cleaner_id}
+              onChange={(e) => setForm((p: any) => ({ ...p, cleaner_id: e.target.value }))}
               style={inputStyle}
             >
-              <option value="">(none)</option>
-              {rules.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.frequency} ({r.start_date})
+              <option value="">(unassigned)</option>
+              {cleaners.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
                 </option>
               ))}
             </select>
           </label>
 
-          <Field label="location" value={form.location} onChange={(v) => setForm((p: any) => ({ ...p, location: v }))} />
-          <Field label="location_lat" value={form.location_lat} onChange={(v) => setForm((p: any) => ({ ...p, location_lat: v }))} />
-          <Field label="location_lng" value={form.location_lng} onChange={(v) => setForm((p: any) => ({ ...p, location_lng: v }))} />
-          <Field label="geofence_radius_m" value={form.geofence_radius_m} onChange={(v) => setForm((p: any) => ({ ...p, geofence_radius_m: v }))} />
-          <Field label="access_instructions" value={form.access_instructions} onChange={(v) => setForm((p: any) => ({ ...p, access_instructions: v }))} />
+          <Field label="address" value={form.address} onChange={(v) => setForm((p: any) => ({ ...p, address: v }))} />
+          <Field label="service_type" value={form.service_type} onChange={(v) => setForm((p: any) => ({ ...p, service_type: v }))} />
 
           <label style={labelStyle}>
-            <span style={labelTextStyle}>status</span>
-            <select value={form.status} onChange={(e) => setForm((p: any) => ({ ...p, status: e.target.value }))} style={inputStyle}>
-              <option value="active">active</option>
-              <option value="paused">paused</option>
-              <option value="closed">closed</option>
-            </select>
+            <span style={labelTextStyle}>scheduled_date</span>
+            <input
+              type="date"
+              value={form.scheduled_date}
+              onChange={(e) => setForm((p: any) => ({ ...p, scheduled_date: e.target.value }))}
+              style={inputStyle}
+            />
           </label>
+
+          <label style={labelStyle}>
+            <span style={labelTextStyle}>scheduled_time</span>
+            <input
+              type="time"
+              value={form.scheduled_time}
+              onChange={(e) => setForm((p: any) => ({ ...p, scheduled_time: e.target.value }))}
+              style={inputStyle}
+            />
+          </label>
+
+          <Field label="duration_hours" value={form.duration_hours} onChange={(v) => setForm((p: any) => ({ ...p, duration_hours: v }))} />
+          <Field label="price" value={form.price} onChange={(v) => setForm((p: any) => ({ ...p, price: v }))} />
+          <Field label="notes" value={form.notes} onChange={(v) => setForm((p: any) => ({ ...p, notes: v }))} />
+          <Field label="status" value={form.status} onChange={(v) => setForm((p: any) => ({ ...p, status: v }))} />
         </div>
 
         <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
@@ -255,7 +268,9 @@ export default function AdminJobsPage() {
           </button>
         </div>
 
-        <div style={{ marginTop: 10, fontSize: 12, color: '#6b7280' }}>Click a row to load it into the form.</div>
+        <div style={{ marginTop: 10, fontSize: 12, color: '#6b7280' }}>
+          Click a row to load it into the form. &quot;status&quot; is free text for now — use whatever value your workflow expects (e.g. pending, scheduled, completed, cancelled).
+        </div>
       </section>
 
       <section>
@@ -264,17 +279,18 @@ export default function AdminJobsPage() {
           <table style={tableStyle}>
             <thead>
               <tr>
-                <th style={thStyle}>Location</th>
+                <th style={thStyle}>Address</th>
                 <th style={thStyle}>Client</th>
+                <th style={thStyle}>Cleaner</th>
+                <th style={thStyle}>Scheduled</th>
                 <th style={thStyle}>Status</th>
-                <th style={thStyle}>Geofence</th>
                 <th style={thStyle}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ padding: 12, color: '#6b7280' }}>
+                  <td colSpan={6} style={{ padding: 12, color: '#6b7280' }}>
                     No rows (or RLS denied SELECT).
                   </td>
                 </tr>
@@ -294,12 +310,13 @@ export default function AdminJobsPage() {
                           color: selectedId === r.id ? '#1d4ed8' : '#111827',
                         }}
                       >
-                        {r.location}
+                        {r.address}
                       </button>
                     </td>
                     <td style={tdStyle}>{clients.find((c) => c.id === r.client_id)?.name ?? r.client_id}</td>
+                    <td style={tdStyle}>{cleaners.find((c) => c.id === r.cleaner_id)?.name ?? '(unassigned)'}</td>
+                    <td style={tdStyle}>{[r.scheduled_date, r.scheduled_time].filter(Boolean).join(' ') || '-'}</td>
                     <td style={tdStyle}>{r.status}</td>
-                    <td style={tdStyle}>{r.geofence_radius_m} m</td>
                     <td style={tdStyle}>
                       <button onClick={() => deleteJob(r.id)} disabled={busy} style={dangerBtn}>
                         Delete
