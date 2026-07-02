@@ -1,21 +1,23 @@
 # Project Status
 
-## Current State (as of 2026-07-01)
+## Current State (as of 2026-07-02)
 Live app running on Hostinger VPS at http://187.124.112.253:3002, PM2-managed, deployed via git pull from GitHub (Byahye800/cleaning-platform). Claude Code installed on VPS for direct development. No domain/HTTPS yet — pending.
 
 ## What's Working
 - Admin portal: login, Clients CRUD, Cleaners CRUD, Jobs CRUD — all confirmed working end-to-end with real data
 - Cleaner-to-job assignment: admin can assign a cleaner to a job via dropdown
-- Cleaner inbox page exists, schema-correct, filters by cleaner_id (untested with a real cleaner login yet)
-- RLS policies confirmed present on: jobs, clients, cleaners, bookings, recurrence_rules, user_roles
+- Cleaner inbox page exists, schema-correct, filters by cleaner_id; client portal (home + read-only jobs view) exists — both confirmed working end-to-end with real test logins
+- RLS policies confirmed present on: jobs, clients, cleaners, bookings, recurrence_rules, user_roles — live policy bodies audited and documented in `supabase/0005_schema_catchup.sql`
+- Logout works on all three portals; login auto-redirects by role; in-app forgot-password flow (no more manual Supabase dashboard resets)
+- `src/proxy.ts` gates all three portals on both "is logged in" and "is the right role for this portal"
+- Stripe invoicing: admin can send an invoice for a completed, priced job; Stripe emails it directly; admin/client Jobs pages show payment status. Webhook for auto-updating payment status on paid/failed exists but isn't live-testable yet (see gaps below)
 
 ## Known Gaps / Next Steps
-- No cleaner accounts linked to real logins yet (user_id not set on any cleaner row) — cleaner-side view untested live
-- No "forgot password" page/flow built in-app (currently requires manual Supabase dashboard reset)
-- Schema drift: live Supabase schema has diverged from git migration files (0001-0004) — bookings table, expanded cleaners/jobs columns not represented in any migration. Needs a formal catch-up migration.
-- No domain or HTTPS yet (blocked on domain purchase)
-- Stripe, Twilio, Resend: not started. .env.local has no keys for any of them yet.
-- No role-based route gating: `proxy.ts` blocks unauthenticated access to `/admin`, `/cleaner`, and `/client`, but a logged-in user of one role (e.g. a cleaner) can still load another portal's page UI (e.g. `/admin/jobs`) — RLS blocks the underlying data, so this isn't a leak, but the form/UI shell still renders for the wrong role.
+- No cleaner accounts linked to real logins yet beyond the one test account — most cleaner-side usage still untested with additional real logins
+- Schema drift catch-up (`0005_schema_catchup.sql`) is written but has not been run against any database yet — it's a documentation/no-op-on-live migration; first real test would be against a fresh environment
+- No domain or HTTPS yet (blocked on domain purchase) — this also blocks registering a real Stripe Dashboard webhook endpoint
+- Stripe webhook (`/api/stripe/webhook`) needs `STRIPE_WEBHOOK_SECRET` and `SUPABASE_SERVICE_ROLE_KEY` added to `.env.local` before it can be tested, even locally via `stripe listen --forward-to`
+- Twilio, Resend: not started
 
 ## Operating Rules
 - Hermes, Claude Code (on VPS), and Claude (chat/architect) may all touch this codebase — always git pull before starting work, always commit+push after finishing, to avoid drift.
