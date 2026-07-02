@@ -12,7 +12,7 @@ export default function LogoutButton({ style }: { style?: React.CSSProperties })
   }
 
   return (
-    <button onClick={handleLogout} style={{ cursor: 'pointer', fontFamily: 'inherit', ...style }}>
+    <button onClick={handleLogout} style={{ cursor: 'pointer', fontFamily: 'inherit', color: 'inherit', ...style }}>
       Log out
     </button>
   );
