@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import LogoutButton from '@/components/LogoutButton';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -25,6 +26,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Link href="/admin/jobs" style={navStyle}>
             Jobs
           </Link>
+          <LogoutButton style={navStyle} />
         </nav>
         <div style={{ height: 16 }} />
         <div style={{ fontSize: 12, color: '#6b7280' }}>
