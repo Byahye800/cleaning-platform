@@ -20,3 +20,23 @@ These rules apply to every session in this repo and override default behavior.
 
 8. **Secrets handling**: Never have the user paste real secrets (API keys, tokens, passwords) into chat. Always have them enter such values directly via terminal commands or environment files instead.
 
+9. **Autonomy tiers**: To reduce interruptions, actions are split into two tiers.
+
+   **Auto-approved — proceed without asking, then summarize at a natural checkpoint** (a feature done, a bug found, a build finished — not per command):
+   - `git add`, `git commit`, `git fetch`/`git pull`
+   - `npm run build`
+   - `pm2 restart`
+   - Reading/listing files
+   - Running the app locally to verify a change
+   - `grep`/`cat` on non-secret files
+   - Editing docs (`docs/SESSION-LOG.md`, `docs/PROJECT-STATUS.md`)
+   - Stripe CLI commands
+
+   **Always pause and describe what you're about to do first, then wait for confirmation:**
+   - `git push`
+   - Anything touching the production database schema (migrations stay a manual, user-reviewed step — see rule 1)
+   - Anything that would print a real secret/key/token to terminal output
+   - Deleting any data
+   - Anything that sends a real email/SMS to an actual customer
+   - Anything irreversible
+
