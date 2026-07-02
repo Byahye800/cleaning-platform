@@ -1,14 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { ROLE_HOME, type Role } from '@/lib/roleHome';
 
-const ROLE_HOME: Record<string, string> = {
-  admin: '/admin/clients',
-  cleaner: '/cleaner/inbox',
-  client: '/client/jobs',
-};
-
-function portalForPath(pathname: string): keyof typeof ROLE_HOME | null {
+function portalForPath(pathname: string): Role | null {
   if (pathname.startsWith('/admin')) return 'admin';
   if (pathname.startsWith('/cleaner')) return 'cleaner';
   if (pathname.startsWith('/client')) return 'client';
@@ -57,7 +52,7 @@ export async function proxy(request: NextRequest) {
     .eq('user_id', user.id)
     .limit(1);
 
-  const role = roleRows?.[0]?.role as keyof typeof ROLE_HOME | undefined;
+  const role = roleRows?.[0]?.role as Role | undefined;
 
   if (!role || !ROLE_HOME[role]) {
     return NextResponse.redirect(new URL('/admin/login', request.url));
