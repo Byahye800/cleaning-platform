@@ -11,6 +11,7 @@ type JobRow = {
   scheduled_date: string | null;
   scheduled_time: string | null;
   cleaner_id: string | null;
+  payment_status: string;
 };
 export default function ClientJobsPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
@@ -30,7 +31,7 @@ export default function ClientJobsPage() {
       if (!cl.data) { setError('Profile not found.'); return; }
       const jr = await supabase
         .from('jobs')
-        .select('id,status,address,service_type,scheduled_date,scheduled_time,cleaner_id')
+        .select('id,status,address,service_type,scheduled_date,scheduled_time,cleaner_id,payment_status')
         .eq('client_id', cl.data.id)
         .order('scheduled_date', { ascending: true })
         .limit(200);
@@ -49,7 +50,7 @@ export default function ClientJobsPage() {
       {error && <div style={{ color: 'red' }}>{error}</div>}
       <p>{busy ? 'Loading...' : client ? 'Hi ' + client.name : 'Not signed in'}</p>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead><tr><th style={th}>Scheduled</th><th style={th}>Address</th><th style={th}>Service</th><th style={th}>Status</th><th style={th}>Cleaner assigned</th></tr></thead>
+        <thead><tr><th style={th}>Scheduled</th><th style={th}>Address</th><th style={th}>Service</th><th style={th}>Status</th><th style={th}>Payment</th><th style={th}>Cleaner assigned</th></tr></thead>
         <tbody>
           {jobs.map((j) => (
             <tr key={j.id}>
@@ -57,10 +58,11 @@ export default function ClientJobsPage() {
               <td style={td}>{j.address}</td>
               <td style={td}>{j.service_type ?? '-'}</td>
               <td style={td}>{j.status}</td>
+              <td style={td}>{j.payment_status}</td>
               <td style={td}>{j.cleaner_id ? 'Assigned' : 'Not yet assigned'}</td>
             </tr>
           ))}
-          {jobs.length === 0 && <tr><td style={td} colSpan={5}>No jobs yet.</td></tr>}
+          {jobs.length === 0 && <tr><td style={td} colSpan={6}>No jobs yet.</td></tr>}
         </tbody>
       </table>
       <p><Link href="/admin/login">Admin login</Link></p>

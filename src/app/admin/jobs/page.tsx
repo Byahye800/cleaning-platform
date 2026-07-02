@@ -19,6 +19,8 @@ type JobRow = {
   price: number | null;
   notes: string | null;
   status: string;
+  payment_status: string;
+  stripe_invoice_id: string | null;
 };
 
 const emptyForm: any = {
@@ -39,6 +41,7 @@ export default function AdminJobsPage() {
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [invoicingId, setInvoicingId] = useState<string | null>(null);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [form, setForm] = useState<any>({ ...emptyForm });
@@ -158,6 +161,37 @@ export default function AdminJobsPage() {
       setError(e?.message ?? String(e));
     } finally {
       setBusy(false);
+    }
+  }
+
+  function canInvoice(r: JobRow) {
+    return r.status === 'completed' && r.price != null && (r.payment_status === 'unpaid' || r.payment_status === 'failed');
+  }
+
+  function invoiceDisabledReason(r: JobRow): string | undefined {
+    if (r.status !== 'completed') return 'Mark job completed first';
+    if (r.price == null) return 'Job needs a price set';
+    if (r.payment_status === 'invoiced') return 'Invoice already sent, awaiting payment';
+    if (r.payment_status === 'paid') return 'Already paid';
+    return undefined;
+  }
+
+  async function sendInvoice(id: string) {
+    setInvoicingId(id);
+    setError(null);
+    try {
+      const res = await fetch('/api/stripe/send-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_id: id }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error ?? 'Failed to send invoice');
+      await loadAll();
+    } catch (e: any) {
+      setError(e?.message ?? String(e));
+    } finally {
+      setInvoicingId(null);
     }
   }
 
@@ -284,13 +318,14 @@ export default function AdminJobsPage() {
                 <th style={thStyle}>Cleaner</th>
                 <th style={thStyle}>Scheduled</th>
                 <th style={thStyle}>Status</th>
+                <th style={thStyle}>Payment</th>
                 <th style={thStyle}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: 12, color: '#6b7280' }}>
+                  <td colSpan={7} style={{ padding: 12, color: '#6b7280' }}>
                     No rows (or RLS denied SELECT).
                   </td>
                 </tr>
@@ -317,10 +352,21 @@ export default function AdminJobsPage() {
                     <td style={tdStyle}>{cleaners.find((c) => c.id === r.cleaner_id)?.name ?? '(unassigned)'}</td>
                     <td style={tdStyle}>{[r.scheduled_date, r.scheduled_time].filter(Boolean).join(' ') || '-'}</td>
                     <td style={tdStyle}>{r.status}</td>
+                    <td style={tdStyle}>{r.payment_status}</td>
                     <td style={tdStyle}>
-                      <button onClick={() => deleteJob(r.id)} disabled={busy} style={dangerBtn}>
-                        Delete
-                      </button>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <button onClick={() => deleteJob(r.id)} disabled={busy} style={dangerBtn}>
+                          Delete
+                        </button>
+                        <button
+                          onClick={() => sendInvoice(r.id)}
+                          disabled={busy || invoicingId === r.id || !canInvoice(r)}
+                          title={invoiceDisabledReason(r)}
+                          style={secondaryPrimaryBtn}
+                        >
+                          {invoicingId === r.id ? 'Sending…' : 'Send invoice'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
