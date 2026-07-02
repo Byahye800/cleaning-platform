@@ -8,7 +8,7 @@ export default function LogoutButton({ style }: { style?: React.CSSProperties })
   async function handleLogout() {
     const supabase = createSupabaseBrowserClient();
     await supabase.auth.signOut();
-    router.push('/admin/login');
+    router.replace('/admin/login');
   }
 
   return (
