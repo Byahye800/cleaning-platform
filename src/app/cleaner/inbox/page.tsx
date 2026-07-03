@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabaseClient';
 type CleanerRow = { id: string; user_id: string; name: string; status: string; };
 type JobRow = {
@@ -65,7 +64,6 @@ export default function CleanerInboxPage() {
           {jobs.length === 0 && <tr><td style={td} colSpan={5}>No jobs assigned yet. Ask admin to assign one in Jobs.</td></tr>}
         </tbody>
       </table>
-      <p><Link href="/admin/login">Admin login</Link></p>
     </div>
   );
 }

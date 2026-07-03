@@ -92,9 +92,9 @@ export default function AdminLoginPage() {
 
   return (
     <main style={{ padding: 24, fontFamily: 'system-ui, sans-serif', maxWidth: 520 }}>
-      <h1 style={{ marginBottom: 8 }}>Admin Login</h1>
+      <h1 style={{ marginBottom: 8 }}>FM Pro Cleaning</h1>
       <p style={{ marginBottom: 16, color: '#6b7280' }}>
-        Supabase email/password sign-in. RLS will enforce admin vs client/cleaner visibility.
+        Sign in to your account.
       </p>
 
       {resetSuccess && (
