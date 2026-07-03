@@ -61,10 +61,11 @@ export async function POST(request: NextRequest) {
     const invoice = event.data.object as Stripe.Invoice;
     const newStatus = event.type === 'invoice.paid' ? 'paid' : 'failed';
 
-    const { error } = await supabaseAdmin
+    const { data: updatedRows, error } = await supabaseAdmin
       .from('jobs')
       .update({ payment_status: newStatus })
-      .eq('stripe_invoice_id', invoice.id);
+      .eq('stripe_invoice_id', invoice.id)
+      .select('id');
 
     if (error) {
       // Stripe already has the money — a failure here means our DB has drifted
@@ -75,6 +76,15 @@ export async function POST(request: NextRequest) {
         `[stripe-webhook] Failed to set payment_status="${newStatus}" for invoice ${invoice.id} (event ${event.id}): ${error.message}`
       );
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (!updatedRows || updatedRows.length === 0) {
+      // No error, but no job had this stripe_invoice_id either — Stripe confirmed
+      // a payment for an invoice our DB doesn't recognize as belonging to any job.
+      // Same alerting rationale as the error case above.
+      console.error(
+        `[stripe-webhook] No job found with stripe_invoice_id=${invoice.id} (event ${event.id}, target status "${newStatus}") — payment_status was not updated anywhere.`
+      );
     }
   }
 
