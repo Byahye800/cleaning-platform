@@ -20,10 +20,8 @@ Live app running on Hostinger VPS at http://187.124.112.253:3002, PM2-managed, d
 ## Known Gaps / Next Steps
 - No cleaner accounts linked to real logins yet beyond the one test account — most cleaner-side usage still untested with additional real logins
 - Schema drift catch-up (`0005_schema_catchup.sql`) is written but has not been run against any database yet — it's a documentation/no-op-on-live migration; first real test would be against a fresh environment
-- **`supabase/0008_cleaner_job_status_update.sql` (cleaner_update_job_status RPC) is written and pushed but not yet applied to production** — cleaners can't actually mark jobs in_progress/completed via `/cleaner/inbox` until this is run via the Supabase SQL Editor and verified
 - No domain or HTTPS yet (blocked on domain purchase) — this also blocks registering a real Stripe Dashboard webhook endpoint, and means password reset links go out over plain HTTP (flagged as a hard dependency, not a nice-to-have)
 - `stripe listen` generates a new signing secret on every restart of that process — `STRIPE_WEBHOOK_SECRET` and a `pm2 restart cleaning-platform --update-env` will need to be redone any time `stripe-listen` restarts, until a real Stripe Dashboard webhook endpoint exists post-domain.
-- Unused `@supabase/auth-helpers-nextjs` dependency still needs removing (app uses `@supabase/ssr` everywhere now) — LOW priority, not yet done
 - Twilio, Resend: not started
 - Next planned work: full site redesign (white/black primary, navy accents, no gold) plus a "boss-level" admin dashboard home page (revenue snapshot, job pipeline, action items, activity feed) — spec pending from the user
 
