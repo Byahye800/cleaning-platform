@@ -41,6 +41,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Webhook signature verification failed: ${e?.message}` }, { status: 400 });
   }
 
+  // Atomically claim this event id before acting on it: Stripe delivers webhooks
+  // at-least-once, so the same event can arrive more than once. The primary key
+  // on stripe_webhook_events.event_id makes the insert itself the compare-and-swap
+  // — a duplicate delivery hits a unique violation and is skipped without
+  // re-running any side effects below.
+  const { error: dedupeError } = await supabaseAdmin
+    .from('stripe_webhook_events')
+    .insert({ event_id: event.id });
+
+  if (dedupeError) {
+    if (dedupeError.code === '23505') {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+    return NextResponse.json({ error: dedupeError.message }, { status: 500 });
+  }
+
   if (event.type === 'invoice.paid' || event.type === 'invoice.payment_failed') {
     const invoice = event.data.object as Stripe.Invoice;
     const newStatus = event.type === 'invoice.paid' ? 'paid' : 'failed';
