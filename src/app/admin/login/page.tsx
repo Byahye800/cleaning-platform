@@ -165,9 +165,6 @@ export default function AdminLoginPage() {
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
 
-        <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
-          After login, go to <a href="/admin/rls-sanity">RLS Sanity Test</a> to verify policies.
-        </div>
       </div>
 
       <div style={{ marginTop: 18 }}>

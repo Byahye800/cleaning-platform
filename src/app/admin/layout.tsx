@@ -14,9 +14,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       >
         <div style={{ fontWeight: 700, marginBottom: 12 }}>Yahye Admin</div>
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <Link href="/admin/rls-sanity" style={navStyle}>
-            RLS Sanity Test
-          </Link>
           <Link href="/admin/clients" style={navStyle}>
             Clients
           </Link>
