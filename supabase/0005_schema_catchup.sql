@@ -15,9 +15,11 @@
 -- via information_schema.columns.column_default (2026-07-02).
 --
 -- recurrence_rules note: live reality is recurrence_rules.job_id -> jobs.id
--- (the reverse of the original 0003 design, which had a jobs.recurrence_rule_id
--- column). This file documents live reality only; it does not recreate the
--- old direction.
+-- (the reverse of the original 0001/0003 design, which had a jobs.recurrence_rule_id
+-- column). See the jobs cleanup block below, which drops that old-direction
+-- column (and the other 0001-only geofencing columns/constraint) if present,
+-- so this file fully reconciles a fresh 0001-replayed database to live reality
+-- rather than just adding what's missing.
 
 create extension if not exists pgcrypto;
 
@@ -133,6 +135,29 @@ begin
   ) then
     alter table public.jobs
       add constraint jobs_cleaner_id_fkey foreign key (cleaner_id) references public.cleaners(id);
+  end if;
+end $$;
+
+-- Clean up 0001-only columns/constraints that never existed live (an early
+-- GPS-geofencing design, dropped from production before it was ever
+-- migration-tracked). No-op on production, which never had these. On a fresh
+-- database that replayed 0001 first, this removes them so the end result
+-- matches live reality instead of carrying extra columns and a status CHECK
+-- constraint that would reject real statuses like 'completed'.
+alter table public.jobs drop column if exists location;
+alter table public.jobs drop column if exists location_lat;
+alter table public.jobs drop column if exists location_lng;
+alter table public.jobs drop column if exists geofence_radius_m;
+alter table public.jobs drop column if exists access_instructions;
+alter table public.jobs drop column if exists recurrence_rule_id;
+
+do $$
+begin
+  if exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.jobs'::regclass and conname = 'jobs_status_check'
+  ) then
+    alter table public.jobs drop constraint jobs_status_check;
   end if;
 end $$;
 

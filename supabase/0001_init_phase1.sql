@@ -1,3 +1,14 @@
+-- ============================================================
+-- SUPERSEDED — kept for historical record only, do not run in isolation.
+-- supabase/0005_schema_catchup.sql is the authoritative baseline for the
+-- live schema. In particular, the jobs.location / location_lat / location_lng
+-- / geofence_radius_m / access_instructions columns and jobs.recurrence_rule_id
+-- below were part of an early GPS-geofencing design that was dropped from
+-- production before ever being migration-tracked -- none of them exist live.
+-- 0005 drops them (IF EXISTS) so replaying the full history (0001 -> 0005)
+-- on a fresh database still reconstructs the real live schema.
+-- ============================================================
+
 -- Yahye Corp (Facilty at cleaning maintenance) — Phase 1 schema seed (admin-only)
 -- Temporary note:
 --   Phase 1 admin portal will use Supabase Service Role for privileged reads/writes.

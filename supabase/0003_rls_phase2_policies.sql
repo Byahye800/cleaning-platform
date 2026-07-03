@@ -1,3 +1,12 @@
+-- ============================================================
+-- SUPERSEDED — kept for historical record only, do not run in isolation.
+-- supabase/0005_schema_catchup.sql's RLS section is the authoritative baseline
+-- (policy bodies copied verbatim from a live pg_policies pull, see its header).
+-- In particular, the recurrence_rules policy below keys off jobs.recurrence_rule_id,
+-- which is the reverse of the live FK direction (recurrence_rules.job_id -> jobs.id)
+-- -- see the 0005 cleanup note and its own recurrence_rules section.
+-- ============================================================
+
 -- Yahye Corp — Phase 2 (pre-RLS) policies
 -- Purpose:
 --  - Replace temporary service-role MVP access with deny-by-default RLS policies.
