@@ -2,6 +2,14 @@
 
 Running dated log of work sessions on this codebase. Newest entries at the top.
 
+## 2026-07-03
+
+- **Rotated `SUPABASE_SERVICE_ROLE_KEY`**, closing out the exposure flagged at the end of the 2026-07-02 session (old value had been echoed in plaintext via a non-silent terminal prompt). New key generated in Supabase Dashboard and set in `.env.local` via a corrected silent `read -s` prompt.
+- Restarted `cleaning-platform` — first attempt was a plain `pm2 restart`, which came back up still throwing `Error: supabaseKey is required.` on every request (cached env, didn't pick up the new key). Re-ran as `pm2 restart cleaning-platform --update-env`; error log came back clean. **Added CLAUDE.md rule 9b** so this doesn't get missed again: any `.env.local` change needs the `--update-env` flag on restart, or the process silently keeps running on stale env vars.
+- Confirmed `stripe-listen` pm2 process still healthy (untouched, 15h+ uptime, 0 restarts).
+- Ran `stripe trigger invoice.paid` (authenticated inline via `STRIPE_SECRET_KEY` from `.env.local`, same pattern as `scripts/stripe-listen.sh` — the interactive shell has no saved `stripe login` session). Every forwarded event, including `invoice.paid`, returned `200` from `/api/stripe/webhook`; app error log stayed empty throughout.
+- **Stripe webhook signature verification and `payment_status` auto-update path is now confirmed working end-to-end** — this was the one piece of Stripe invoicing still marked unverified as of 2026-07-02. Invoicing feature is fully live: send-invoice, DB update, and webhook confirmation all verified against the real DB/Stripe test mode.
+
 ## 2026-07-02
 
 - Built the client portal: `src/app/client/layout.tsx` (branded shell + nav), `src/app/client/page.tsx` (home redirect), and `src/app/client/jobs/page.tsx` (read-only jobs view scoped to the signed-in client). Created a real test client login and confirmed the flow end-to-end: client logs in → sees only their own jobs in `/client/jobs`. First fully verified end-to-end client flow in the app.

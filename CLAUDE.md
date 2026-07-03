@@ -40,3 +40,5 @@ These rules apply to every session in this repo and override default behavior.
    - Anything that sends a real email/SMS to an actual customer
    - Anything irreversible
 
+9b. **Env reload after `.env.local` changes**: Any change to `.env.local` requires `pm2 restart <name> --update-env`, not a plain `pm2 restart`. A plain restart keeps serving the process's previously cached environment, so the process will silently keep running on stale env vars (secrets, keys, etc.) even though the file on disk is correct.
+
