@@ -74,14 +74,37 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Client has no contact_email on file.' }, { status: 400 });
   }
 
+  // Atomically claim the job before calling Stripe: only a request that actually flips
+  // payment_status from unpaid/failed to invoiced proceeds, so a double-click or retry
+  // that loses the claim never reaches Stripe at all.
+  const { data: claimedRows, error: claimError } = await supabase
+    .from('jobs')
+    .update({ payment_status: 'invoiced' })
+    .eq('id', job.id)
+    .in('payment_status', ['unpaid', 'failed'])
+    .select('id');
+
+  if (claimError) {
+    return NextResponse.json({ error: claimError.message }, { status: 500 });
+  }
+  if (!claimedRows || claimedRows.length === 0) {
+    return NextResponse.json(
+      { error: 'This job is already being invoiced or has already been invoiced.' },
+      { status: 409 }
+    );
+  }
+
   try {
     let customerId = client.stripe_customer_id;
 
     if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: client.contact_email,
-        name: client.name,
-      });
+      const customer = await stripe.customers.create(
+        {
+          email: client.contact_email,
+          name: client.name,
+        },
+        { idempotencyKey: `customer-create-${client.id}` }
+      );
       customerId = customer.id;
 
       const { error: updateClientError } = await supabase
@@ -92,28 +115,38 @@ export async function POST(request: NextRequest) {
       if (updateClientError) throw updateClientError;
     }
 
-    const invoice = await stripe.invoices.create({
-      customer: customerId,
-      collection_method: 'send_invoice',
-      currency: 'gbp',
-      days_until_due: 14,
-      auto_advance: false,
-    });
+    const invoice = await stripe.invoices.create(
+      {
+        customer: customerId,
+        collection_method: 'send_invoice',
+        currency: 'gbp',
+        days_until_due: 14,
+        auto_advance: false,
+      },
+      { idempotencyKey: `invoice-create-${job.id}` }
+    );
 
-    await stripe.invoiceItems.create({
-      customer: customerId,
-      invoice: invoice.id,
-      amount: Math.round(Number(job.price) * 100),
-      currency: 'gbp',
-      description: `${job.service_type ?? 'Cleaning service'} — ${job.address} (${job.scheduled_date ?? 'date TBC'})`,
-    });
+    await stripe.invoiceItems.create(
+      {
+        customer: customerId,
+        invoice: invoice.id,
+        amount: Math.round(Number(job.price) * 100),
+        currency: 'gbp',
+        description: `${job.service_type ?? 'Cleaning service'} — ${job.address} (${job.scheduled_date ?? 'date TBC'})`,
+      },
+      { idempotencyKey: `invoice-item-${job.id}` }
+    );
 
-    const finalized = await stripe.invoices.finalizeInvoice(invoice.id);
-    await stripe.invoices.sendInvoice(finalized.id);
+    const finalized = await stripe.invoices.finalizeInvoice(
+      invoice.id,
+      {},
+      { idempotencyKey: `invoice-finalize-${job.id}` }
+    );
+    await stripe.invoices.sendInvoice(finalized.id, {}, { idempotencyKey: `invoice-send-${job.id}` });
 
     const { data: updatedRows, error: updateJobError } = await supabase
       .from('jobs')
-      .update({ stripe_invoice_id: finalized.id, payment_status: 'invoiced' })
+      .update({ stripe_invoice_id: finalized.id })
       .eq('id', job.id)
       .select('id');
 
@@ -124,6 +157,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, stripe_invoice_id: finalized.id });
   } catch (e: any) {
+    await supabase.from('jobs').update({ payment_status: 'failed' }).eq('id', job.id);
     return NextResponse.json({ error: e?.message ?? 'Failed to send invoice' }, { status: 500 });
   }
 }
