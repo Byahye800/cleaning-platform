@@ -8,6 +8,11 @@ export const color = {
   navy: '#1B2B4B',
   navyDark: '#12203A',
   navyLight: '#2F4570',
+  navyBlack: '#0B1220',
+
+  overlayBorder: 'rgba(255,255,255,0.12)',
+  overlayBg: 'rgba(255,255,255,0.04)',
+  overlayTextMuted: 'rgba(255,255,255,0.72)',
 
   gray50: '#FAFAFA',
   gray100: '#F2F2F2',

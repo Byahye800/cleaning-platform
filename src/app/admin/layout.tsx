@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import LogoutButton from '@/components/LogoutButton';
+import { color, spacing, radius, font } from '@/lib/theme';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -7,13 +8,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <aside
         style={{
           width: 260,
-          padding: 16,
-          borderRight: '1px solid #e5e7eb',
-          background: '#fafafa',
+          padding: spacing.lg,
+          borderRight: `1px solid ${color.border}`,
+          background: color.gray50,
         }}
       >
-        <div style={{ fontWeight: 700, marginBottom: 12 }}>Yahye Admin</div>
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ fontWeight: font.weight.bold, marginBottom: spacing.md }}>Yahye Admin</div>
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: spacing.sm }}>
           <Link href="/admin/clients" style={navStyle}>
             Clients
           </Link>
@@ -25,19 +26,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </Link>
           <LogoutButton style={navStyle} />
         </nav>
-        <div style={{ height: 16 }} />
-        <div style={{ fontSize: 12, color: '#6b7280' }}>
+        <div style={{ height: spacing.lg }} />
+        <div style={{ fontSize: font.size.sm, color: color.gray600 }}>
           Uses Supabase client-side auth + RLS enforced at the DB.
         </div>
       </aside>
-      <main style={{ flex: 1, padding: 24 }}>{children}</main>
+      <main style={{ flex: 1, padding: spacing.xl }}>{children}</main>
     </div>
   );
 }
 
 const navStyle: React.CSSProperties = {
-  padding: '8px 10px',
-  borderRadius: 8,
-  border: '1px solid #e5e7eb',
-  background: 'white',
+  padding: `${spacing.sm}px ${spacing.md}px`,
+  borderRadius: radius.md,
+  border: `1px solid ${color.border}`,
+  background: color.white,
 };
