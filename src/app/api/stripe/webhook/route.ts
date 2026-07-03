@@ -67,6 +67,13 @@ export async function POST(request: NextRequest) {
       .eq('stripe_invoice_id', invoice.id);
 
     if (error) {
+      // Stripe already has the money — a failure here means our DB has drifted
+      // from reality. Log with a fixed, greppable prefix so this can be wired
+      // into log-based alerting (e.g. pm2 error-log monitoring) even before an
+      // admin-facing notification channel (Resend) exists.
+      console.error(
+        `[stripe-webhook] Failed to set payment_status="${newStatus}" for invoice ${invoice.id} (event ${event.id}): ${error.message}`
+      );
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
   }
