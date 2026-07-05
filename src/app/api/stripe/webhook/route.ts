@@ -85,6 +85,21 @@ export async function POST(request: NextRequest) {
       console.error(
         `[stripe-webhook] No job found with stripe_invoice_id=${invoice.id} (event ${event.id}, target status "${newStatus}") — payment_status was not updated anywhere.`
       );
+    } else {
+      const action = newStatus === 'paid' ? 'invoice.paid' : 'invoice.failed';
+      const { error: logError } = await supabaseAdmin.from('activity_log').insert(
+        updatedRows.map((row) => ({
+          actor_id: null,
+          action,
+          entity_type: 'job',
+          entity_id: row.id,
+        }))
+      );
+      if (logError) {
+        console.error(
+          `[stripe-webhook] Failed to write activity_log for job(s) ${updatedRows.map((r) => r.id).join(', ')} (event ${event.id}): ${logError.message}`
+        );
+      }
     }
   }
 

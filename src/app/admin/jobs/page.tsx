@@ -110,13 +110,30 @@ export default function AdminJobsPage() {
     return payload;
   }
 
+  async function getActorId() {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.user?.id ?? null;
+  }
+
   async function createJob() {
     setBusy(true);
     setError(null);
     try {
       const payload = buildPayload();
-      const { error: insertError } = await supabase.from('jobs').insert(payload);
+      const { data: inserted, error: insertError } = await supabase
+        .from('jobs')
+        .insert(payload)
+        .select('id')
+        .single();
       if (insertError) throw insertError;
+
+      const { error: logError } = await supabase.from('activity_log').insert({
+        actor_id: await getActorId(),
+        action: 'job.created',
+        entity_type: 'job',
+        entity_id: inserted.id,
+      });
+      if (logError) console.error('Failed to write activity_log for job.created:', logError);
 
       setSelectedId(null);
       setForm({ ...emptyForm });
@@ -133,8 +150,20 @@ export default function AdminJobsPage() {
     setError(null);
     try {
       const payload = buildPayload();
+      const previousStatus = rows.find((r) => r.id === id)?.status;
+
       const { error: updateError } = await supabase.from('jobs').update(payload).eq('id', id);
       if (updateError) throw updateError;
+
+      if (previousStatus !== undefined && previousStatus !== payload.status) {
+        const { error: logError } = await supabase.from('activity_log').insert({
+          actor_id: await getActorId(),
+          action: 'job.status_changed',
+          entity_type: 'job',
+          entity_id: id,
+        });
+        if (logError) console.error('Failed to write activity_log for job.status_changed:', logError);
+      }
 
       await loadAll();
     } catch (e: any) {

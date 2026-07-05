@@ -155,6 +155,16 @@ export async function POST(request: NextRequest) {
       throw new Error('Job update did not affect any rows (check admin permissions).');
     }
 
+    const { error: logError } = await supabase.from('activity_log').insert({
+      actor_id: user.id,
+      action: 'invoice.sent',
+      entity_type: 'job',
+      entity_id: job.id,
+    });
+    if (logError) {
+      console.error(`[send-invoice] Failed to write activity_log for job ${job.id}: ${logError.message}`);
+    }
+
     return NextResponse.json({ success: true, stripe_invoice_id: finalized.id });
   } catch (e: any) {
     await supabase.from('jobs').update({ payment_status: 'failed' }).eq('id', job.id);
