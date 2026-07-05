@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseClient';
 import { spacing } from '@/lib/theme';
 import { summarizeRevenue, isoDate, ZERO_REVENUE_TOTALS, type RevenueRow } from '@/lib/revenue';
+import { countByStatus } from '@/lib/counts';
 import ActionItems, { type CompletedNoInvoiceJob, type FailedInvoiceJob, type UnassignedTodayJob } from './_dashboard/ActionItems';
 import RevenueSnapshot, { type RevenueTotals } from './_dashboard/RevenueSnapshot';
 import JobPipeline, { type StatusCount } from './_dashboard/JobPipeline';
@@ -13,17 +14,6 @@ function startOfWeekMonday(d: Date) {
   const day = d.getDay(); // 0 = Sun .. 6 = Sat
   const diff = (day + 6) % 7; // days since Monday
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() - diff);
-}
-
-// Groups by whatever status strings actually show up this week -- no
-// hardcoded bucket list, since this project has already been burned once by
-// assuming a status value ('scheduled') instead of checking the real data.
-function countByStatus(rows: { status: string }[]): StatusCount[] {
-  const counts = new Map<string, number>();
-  for (const row of rows) counts.set(row.status, (counts.get(row.status) ?? 0) + 1);
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .map(([status, count]) => ({ status, count }));
 }
 
 type ActivityRow = {

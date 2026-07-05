@@ -17,10 +17,12 @@ import {
   type MonthlyCount,
   type AgingBucket,
 } from '@/lib/revenue';
+import { countByStatus, type StatusCount } from '@/lib/counts';
 import RevenueSnapshot from '../_dashboard/RevenueSnapshot';
 import RevenueTrendChart from '../_financials/RevenueTrendChart';
 import InvoiceAgingChart from '../_financials/InvoiceAgingChart';
 import JobVolumeChart from '../_financials/JobVolumeChart';
+import InvoiceStatusDonut from '../_financials/InvoiceStatusDonut';
 
 const MONTHS_OF_HISTORY = 6;
 
@@ -35,6 +37,7 @@ export default function FinancialsPage() {
   const [revenueTrend, setRevenueTrend] = useState<MonthlyRevenue[]>([]);
   const [jobVolume, setJobVolume] = useState<MonthlyCount[]>([]);
   const [agingBuckets, setAgingBuckets] = useState<AgingBucket[]>([]);
+  const [paymentStatusCounts, setPaymentStatusCounts] = useState<StatusCount[]>([]);
 
   const load = useCallback(async () => {
     setError(null);
@@ -46,7 +49,7 @@ export default function FinancialsPage() {
       const thisMonthEnd = isoDate(new Date(today.getFullYear(), today.getMonth() + 1, 1));
       const lastMonthStart = isoDate(new Date(today.getFullYear(), today.getMonth() - 1, 1));
 
-      const [trendRes, completedActivityRes, agingRes] = await Promise.all([
+      const [trendRes, completedActivityRes, agingRes, statusRes] = await Promise.all([
         supabase
           .from('jobs')
           .select('price, payment_status, stripe_invoice_id, invoiced_at')
@@ -61,9 +64,10 @@ export default function FinancialsPage() {
           .select('price, invoiced_at')
           .in('payment_status', ['invoiced', 'failed'])
           .not('invoiced_at', 'is', null),
+        supabase.from('jobs').select('payment_status'),
       ]);
 
-      for (const res of [trendRes, completedActivityRes, agingRes]) {
+      for (const res of [trendRes, completedActivityRes, agingRes, statusRes]) {
         if (res.error) throw res.error;
       }
 
@@ -76,6 +80,9 @@ export default function FinancialsPage() {
       setJobVolume(bucketCountByMonth(completedDates, months));
 
       setAgingBuckets(bucketInvoiceAging((agingRes.data ?? []) as { price: number | null; invoiced_at: string | null }[]));
+
+      const statusRows = ((statusRes.data ?? []) as { payment_status: string }[]).map((r) => ({ status: r.payment_status }));
+      setPaymentStatusCounts(countByStatus(statusRows));
     } catch (e: any) {
       setError(e?.message ?? String(e));
     } finally {
@@ -104,6 +111,7 @@ export default function FinancialsPage() {
           <div style={{ display: 'flex', gap: spacing.xl, flexWrap: 'wrap' }}>
             <InvoiceAgingChart buckets={agingBuckets} />
             <JobVolumeChart data={jobVolume} />
+            <InvoiceStatusDonut counts={paymentStatusCounts} />
           </div>
         </div>
       )}

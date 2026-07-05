@@ -1,6 +1,7 @@
 import { color, spacing, radius, font } from '@/lib/theme';
+import type { StatusCount } from '@/lib/counts';
 
-export type StatusCount = { status: string; count: number };
+export type { StatusCount };
 
 // Cosmetic labels only, for the statuses that show up in practice today.
 // Any other status string still renders fine via the `?? status` fallback --
