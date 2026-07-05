@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Yahye Admin',
-  description: 'Admin portal',
+  title: 'Facility Management Pro Cleaning & Maintenance',
+  description: 'Facility Management Pro Cleaning & Maintenance — admin portal',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

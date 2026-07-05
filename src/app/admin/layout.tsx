@@ -44,7 +44,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         }}
       >
         <div style={{ fontWeight: font.weight.bold, marginBottom: spacing.md, color: color.gray900 }}>
-          Yahye Admin
+          FM Pro Cleaning
         </div>
         <nav style={{ display: 'flex', flexDirection: 'column', gap: spacing.lg }}>
           {NAV_GROUPS.map((group, i) => (
