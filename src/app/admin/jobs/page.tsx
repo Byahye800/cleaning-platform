@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseClient';
+import { canInvoice, invoiceDisabledReason } from '@/lib/jobInvoicing';
 
 type ClientRow = { id: string; name: string };
 
@@ -74,13 +75,25 @@ export default function AdminJobsPage() {
     if (clientsRes.error) throw clientsRes.error;
     if (cleanersRes.error) throw cleanersRes.error;
 
-    setRows((jobsRes.data ?? []) as any);
+    const jobs = (jobsRes.data ?? []) as JobRow[];
+    setRows(jobs);
     setClients((clientsRes.data ?? []) as any);
     setCleaners((cleanersRes.data ?? []) as any);
+    return jobs;
   }
 
   useEffect(() => {
-    loadAll().catch((e: any) => setError(e?.message ?? String(e)));
+    loadAll()
+      .then((jobs) => {
+        // One-time read of a `?select=<id>` deep link (e.g. from the dashboard's
+        // action items) — read directly off window.location rather than
+        // useSearchParams so this stays a statically-rendered page with no
+        // Suspense boundary needed for a value we only care about on mount.
+        const selectId = new URLSearchParams(window.location.search).get('select');
+        const match = selectId ? jobs.find((r) => r.id === selectId) : undefined;
+        if (match) pickRow(match);
+      })
+      .catch((e: any) => setError(e?.message ?? String(e)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -156,13 +169,15 @@ export default function AdminJobsPage() {
       if (updateError) throw updateError;
 
       if (previousStatus !== undefined && previousStatus !== payload.status) {
+        const action =
+          payload.status === 'in_progress' ? 'job.started' : payload.status === 'completed' ? 'job.completed' : 'job.status_changed';
         const { error: logError } = await supabase.from('activity_log').insert({
           actor_id: await getActorId(),
-          action: 'job.status_changed',
+          action,
           entity_type: 'job',
           entity_id: id,
         });
-        if (logError) console.error('Failed to write activity_log for job.status_changed:', logError);
+        if (logError) console.error(`Failed to write activity_log for ${action}:`, logError);
       }
 
       await loadAll();
@@ -191,18 +206,6 @@ export default function AdminJobsPage() {
     } finally {
       setBusy(false);
     }
-  }
-
-  function canInvoice(r: JobRow) {
-    return r.status === 'completed' && r.price != null && (r.payment_status === 'unpaid' || r.payment_status === 'failed');
-  }
-
-  function invoiceDisabledReason(r: JobRow): string | undefined {
-    if (r.status !== 'completed') return 'Mark job completed first';
-    if (r.price == null) return 'Job needs a price set';
-    if (r.payment_status === 'invoiced') return 'Invoice already sent, awaiting payment';
-    if (r.payment_status === 'paid') return 'Already paid';
-    return undefined;
   }
 
   async function sendInvoice(id: string) {

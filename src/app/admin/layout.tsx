@@ -15,6 +15,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       >
         <div style={{ fontWeight: font.weight.bold, marginBottom: spacing.md }}>Yahye Admin</div>
         <nav style={{ display: 'flex', flexDirection: 'column', gap: spacing.sm }}>
+          <Link href="/admin" style={navStyle}>
+            Dashboard
+          </Link>
           <Link href="/admin/clients" style={navStyle}>
             Clients
           </Link>
