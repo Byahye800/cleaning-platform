@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
 
     const { data: updatedRows, error: updateJobError } = await supabase
       .from('jobs')
-      .update({ stripe_invoice_id: finalized.id })
+      .update({ stripe_invoice_id: finalized.id, invoiced_at: new Date().toISOString() })
       .eq('id', job.id)
       .select('id');
 

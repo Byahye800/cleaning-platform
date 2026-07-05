@@ -9,6 +9,11 @@ export const color = {
   navyDark: '#12203A',
   navyLight: '#2F4570',
   navyBlack: '#0B1220',
+  // Same hue family as `navy`, lifted in lightness/chroma specifically for use as a
+  // plotted data-series color (charts only, never UI chrome) -- `navy` itself reads
+  // as near-black/gray at data-mark size and fails the dataviz palette validator's
+  // lightness-band and chroma-floor checks.
+  chartBlue: '#3457A8',
 
   overlayBorder: 'rgba(255,255,255,0.12)',
   overlayBg: 'rgba(255,255,255,0.04)',

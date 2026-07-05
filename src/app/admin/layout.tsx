@@ -1,8 +1,14 @@
+'use client';
+
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import LogoutButton from '@/components/LogoutButton';
 import { color, spacing, radius, font } from '@/lib/theme';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const linkStyle = (href: string) => (pathname === href ? activeNavStyle : navStyle);
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <aside
@@ -13,19 +19,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           background: color.gray50,
         }}
       >
-        <div style={{ fontWeight: font.weight.bold, marginBottom: spacing.md }}>Yahye Admin</div>
+        <div style={{ fontWeight: font.weight.bold, marginBottom: spacing.md, color: color.gray900 }}>
+          Yahye Admin
+        </div>
         <nav style={{ display: 'flex', flexDirection: 'column', gap: spacing.sm }}>
-          <Link href="/admin" style={navStyle}>
+          <Link href="/admin" style={linkStyle('/admin')}>
             Dashboard
           </Link>
-          <Link href="/admin/clients" style={navStyle}>
+          <Link href="/admin/clients" style={linkStyle('/admin/clients')}>
             Clients
           </Link>
-          <Link href="/admin/cleaners" style={navStyle}>
+          <Link href="/admin/cleaners" style={linkStyle('/admin/cleaners')}>
             Cleaners
           </Link>
-          <Link href="/admin/jobs" style={navStyle}>
+          <Link href="/admin/jobs" style={linkStyle('/admin/jobs')}>
             Jobs
+          </Link>
+          <Link href="/admin/financials" style={linkStyle('/admin/financials')}>
+            Financials
           </Link>
           <LogoutButton style={navStyle} />
         </nav>
@@ -44,4 +55,12 @@ const navStyle: React.CSSProperties = {
   borderRadius: radius.md,
   border: `1px solid ${color.border}`,
   background: color.white,
+  color: color.gray900,
+};
+
+const activeNavStyle: React.CSSProperties = {
+  ...navStyle,
+  background: color.navy,
+  color: color.textInverse,
+  border: `1px solid ${color.navy}`,
 };

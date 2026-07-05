@@ -1,6 +1,7 @@
 import { color, spacing, radius, font } from '@/lib/theme';
+import type { RevenueTotals } from '@/lib/revenue';
 
-export type RevenueTotals = { invoiced: number; collected: number; outstanding: number };
+export type { RevenueTotals };
 
 const ROWS: Array<{ label: string; key: keyof RevenueTotals }> = [
   { label: 'Invoiced', key: 'invoiced' },

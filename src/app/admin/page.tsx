@@ -3,43 +3,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseClient';
 import { spacing } from '@/lib/theme';
+import { summarizeRevenue, isoDate, ZERO_REVENUE_TOTALS, type RevenueRow } from '@/lib/revenue';
 import ActionItems, { type CompletedNoInvoiceJob, type FailedInvoiceJob, type UnassignedTodayJob } from './_dashboard/ActionItems';
 import RevenueSnapshot, { type RevenueTotals } from './_dashboard/RevenueSnapshot';
 import JobPipeline, { type StatusCount } from './_dashboard/JobPipeline';
 import ActivityFeed, { type ActivityItem } from './_dashboard/ActivityFeed';
 
-const ZERO_TOTALS: RevenueTotals = { invoiced: 0, collected: 0, outstanding: 0 };
-
-function pad(n: number) {
-  return String(n).padStart(2, '0');
-}
-
-// Plain YYYY-MM-DD in the *browser's* local time zone, matching how
-// admin/jobs/page.tsx's <input type="date"> writes scheduled_date -- both
-// reading and writing go through the same local-date convention.
-function isoDate(d: Date) {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
 function startOfWeekMonday(d: Date) {
   const day = d.getDay(); // 0 = Sun .. 6 = Sat
   const diff = (day + 6) % 7; // days since Monday
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() - diff);
-}
-
-type RevenueRow = { price: number | null; payment_status: string; stripe_invoice_id: string | null };
-
-function summarizeRevenue(rows: RevenueRow[]): RevenueTotals {
-  return rows.reduce(
-    (totals, row) => {
-      const amount = row.price ?? 0;
-      if (row.stripe_invoice_id) totals.invoiced += amount;
-      if (row.payment_status === 'paid') totals.collected += amount;
-      if (row.payment_status === 'invoiced' || row.payment_status === 'failed') totals.outstanding += amount;
-      return totals;
-    },
-    { ...ZERO_TOTALS }
-  );
 }
 
 // Groups by whatever status strings actually show up this week -- no
@@ -93,8 +66,8 @@ export default function AdminDashboardPage() {
   const [completedNoInvoice, setCompletedNoInvoice] = useState<CompletedNoInvoiceJob[]>([]);
   const [unassignedToday, setUnassignedToday] = useState<UnassignedTodayJob[]>([]);
 
-  const [thisMonthRevenue, setThisMonthRevenue] = useState<RevenueTotals>(ZERO_TOTALS);
-  const [lastMonthRevenue, setLastMonthRevenue] = useState<RevenueTotals>(ZERO_TOTALS);
+  const [thisMonthRevenue, setThisMonthRevenue] = useState<RevenueTotals>(ZERO_REVENUE_TOTALS);
+  const [lastMonthRevenue, setLastMonthRevenue] = useState<RevenueTotals>(ZERO_REVENUE_TOTALS);
   const [pipelineCounts, setPipelineCounts] = useState<StatusCount[]>([]);
 
   const [activityItems, setActivityItems] = useState<ActivityItem[]>([]);
@@ -131,13 +104,13 @@ export default function AdminDashboardPage() {
         supabase
           .from('jobs')
           .select('price, payment_status, stripe_invoice_id')
-          .gte('scheduled_date', thisMonthStart)
-          .lt('scheduled_date', thisMonthEnd),
+          .gte('invoiced_at', thisMonthStart)
+          .lt('invoiced_at', thisMonthEnd),
         supabase
           .from('jobs')
           .select('price, payment_status, stripe_invoice_id')
-          .gte('scheduled_date', lastMonthStart)
-          .lt('scheduled_date', thisMonthStart),
+          .gte('invoiced_at', lastMonthStart)
+          .lt('invoiced_at', thisMonthStart),
         supabase.from('jobs').select('status').gte('scheduled_date', weekStart).lt('scheduled_date', weekEnd),
         supabase
           .from('activity_log')
