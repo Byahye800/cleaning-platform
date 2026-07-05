@@ -5,6 +5,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabaseClient';
 import { spacing } from '@/lib/theme';
 import { summarizeRevenue, isoDate, ZERO_REVENUE_TOTALS, type RevenueRow } from '@/lib/revenue';
 import { countByStatus } from '@/lib/counts';
+import { describeActivity, type ActivityRow } from '@/lib/activity';
 import ActionItems, { type CompletedNoInvoiceJob, type FailedInvoiceJob, type UnassignedTodayJob } from './_dashboard/ActionItems';
 import RevenueSnapshot, { type RevenueTotals } from './_dashboard/RevenueSnapshot';
 import JobPipeline, { type StatusCount } from './_dashboard/JobPipeline';
@@ -14,36 +15,6 @@ function startOfWeekMonday(d: Date) {
   const day = d.getDay(); // 0 = Sun .. 6 = Sat
   const diff = (day + 6) % 7; // days since Monday
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() - diff);
-}
-
-type ActivityRow = {
-  id: string;
-  actor_id: string | null;
-  action: string;
-  entity_type: string;
-  entity_id: string;
-  created_at: string;
-};
-
-function describeActivity(row: ActivityRow, jobLabel: string, actorName: string): string {
-  switch (row.action) {
-    case 'job.created':
-      return `${actorName} created ${jobLabel}`;
-    case 'job.started':
-      return `${actorName} started ${jobLabel}`;
-    case 'job.completed':
-      return `${actorName} marked ${jobLabel} completed`;
-    case 'invoice.sent':
-      return `${actorName} sent an invoice for ${jobLabel}`;
-    case 'invoice.paid':
-      return `Payment received for ${jobLabel}`;
-    case 'invoice.failed':
-      return `Payment failed for ${jobLabel}`;
-    case 'job.status_changed':
-      return `${actorName} updated ${jobLabel}'s status`;
-    default:
-      return `${actorName} — ${row.action} on ${jobLabel}`;
-  }
 }
 
 export default function AdminDashboardPage() {

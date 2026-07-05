@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { Pencil } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseClient';
 import { canInvoice, invoiceDisabledReason } from '@/lib/jobInvoicing';
 
@@ -365,20 +367,18 @@ export default function AdminJobsPage() {
                 rows.map((r) => (
                   <tr key={r.id}>
                     <td style={tdStyle}>
-                      <button
-                        onClick={() => pickRow(r)}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          padding: 0,
-                          textAlign: 'left',
-                          cursor: 'pointer',
-                          fontWeight: 700,
-                          color: selectedId === r.id ? '#1d4ed8' : '#111827',
-                        }}
-                      >
-                        {r.address}
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Link href={`/admin/jobs/${r.id}`} style={{ fontWeight: 700, color: selectedId === r.id ? '#1d4ed8' : '#111827' }}>
+                          {r.address}
+                        </Link>
+                        <button
+                          onClick={() => pickRow(r)}
+                          title="Load into edit form"
+                          style={{ background: 'transparent', border: 'none', padding: 2, cursor: 'pointer', color: '#6b7280', display: 'inline-flex' }}
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      </div>
                     </td>
                     <td style={tdStyle}>{clients.find((c) => c.id === r.client_id)?.name ?? r.client_id}</td>
                     <td style={tdStyle}>{cleaners.find((c) => c.id === r.cleaner_id)?.name ?? '(unassigned)'}</td>

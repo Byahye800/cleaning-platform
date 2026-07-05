@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { Pencil } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseClient';
 
 type ClientRow = {
@@ -265,21 +267,18 @@ export default function AdminClientsPage() {
                 rows.map((r) => (
                   <tr key={r.id}>
                     <td style={tdStyle}>
-                      <button
-                        onClick={() => pickRow(r)}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          padding: 0,
-                          textAlign: 'left',
-                          cursor: 'pointer',
-                          fontWeight: 700,
-                          color: selectedId === r.id ? '#1d4ed8' : '#111827',
-                        }}
-                        title="Load into form"
-                      >
-                        {r.name}
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Link href={`/admin/clients/${r.id}`} style={{ fontWeight: 700, color: selectedId === r.id ? '#1d4ed8' : '#111827' }}>
+                          {r.name}
+                        </Link>
+                        <button
+                          onClick={() => pickRow(r)}
+                          title="Load into form"
+                          style={{ background: 'transparent', border: 'none', padding: 2, cursor: 'pointer', color: '#6b7280', display: 'inline-flex' }}
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      </div>
                     </td>
                     <td style={tdStyle}>{r.contact_email}</td>
                     <td style={tdStyle}>{r.status}</td>

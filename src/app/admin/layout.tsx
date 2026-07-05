@@ -66,7 +66,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           Uses Supabase client-side auth + RLS enforced at the DB.
         </div>
       </aside>
-      <main style={{ flex: 1, padding: spacing.xl }}>{children}</main>
+      <main style={{ flex: 1, padding: spacing.xl, background: color.white, color: color.textPrimary }}>{children}</main>
     </div>
   );
 }

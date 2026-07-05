@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { Pencil } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseClient';
 
 type CleanerRow = {
@@ -248,12 +250,18 @@ export default function AdminCleanersPage() {
                 rows.map((r) => (
                   <tr key={r.id}>
                     <td style={tdStyle}>
-                      <button
-                        onClick={() => pickRow(r)}
-                        style={{ background: 'transparent', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', fontWeight: 600 }}
-                      >
-                        {r.name}
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Link href={`/admin/cleaners/${r.id}`} style={{ fontWeight: 600 }}>
+                          {r.name}
+                        </Link>
+                        <button
+                          onClick={() => pickRow(r)}
+                          title="Load into edit form"
+                          style={{ background: 'transparent', border: 'none', padding: 2, cursor: 'pointer', color: '#6b7280', display: 'inline-flex' }}
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      </div>
                     </td>
                     <td style={tdStyle}>{r.email}</td>
                     <td style={tdStyle}>{r.dbs_status ?? ''}</td>
