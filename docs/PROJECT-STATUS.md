@@ -1,6 +1,6 @@
 # Project Status
 
-## Current State (as of 2026-07-03)
+## Current State (as of 2026-07-05)
 Live app running on Hostinger VPS at http://187.124.112.253:3002, PM2-managed, deployed via git pull from GitHub (Byahye800/cleaning-platform). Claude Code installed on VPS for direct development. No domain/HTTPS yet — pending.
 
 ## What's Working
@@ -17,6 +17,7 @@ Live app running on Hostinger VPS at http://187.124.112.253:3002, PM2-managed, d
 - Login page is a single shared, properly-branded sign-in for all three roles (no more "Admin Login" dev copy); the RLS Sanity Test debug tool and every stray "Admin login" link inside the cleaner/client portals have been removed.
 - Migration history reconciled: `0001`/`0003` marked superseded, `0005` now actively cleans up `0001`'s never-live GPS-geofencing columns and status CHECK constraint so a from-scratch replay matches production instead of breaking on it.
 - Site redesign in progress (white/black primary, navy `#1B2B4B` accent, no gold): `src/lib/theme.ts` design tokens created, and the admin/cleaner/client `BrandBar`/nav layouts are migrated to use them (visual unchanged). `activity_log` table (`supabase/0010`) applied and verified live -- immutable via RLS (SELECT/INSERT only for authenticated admins, no UPDATE/DELETE policy for any role).
+- `activity_log` writes are now wired up in app code at three of the four action points -- job created/status changed (admin), invoice sent, invoice paid/failed -- all deployed and build-verified (2026-07-05). The fourth (cleaner-triggered status change) is a migration-only change (`supabase/0011`) to the existing `cleaner_update_job_status` SECURITY DEFINER function, **not yet applied to production** -- pending manual apply via Supabase SQL Editor.
 
 ## Known Gaps / Next Steps
 - No cleaner accounts linked to real logins yet beyond the one test account — most cleaner-side usage still untested with additional real logins
@@ -24,7 +25,8 @@ Live app running on Hostinger VPS at http://187.124.112.253:3002, PM2-managed, d
 - No domain or HTTPS yet (blocked on domain purchase) — this also blocks registering a real Stripe Dashboard webhook endpoint, and means password reset links go out over plain HTTP (flagged as a hard dependency, not a nice-to-have)
 - `stripe listen` generates a new signing secret on every restart of that process — `STRIPE_WEBHOOK_SECRET` and a `pm2 restart cleaning-platform --update-env` will need to be redone any time `stripe-listen` restarts, until a real Stripe Dashboard webhook endpoint exists post-domain.
 - Twilio, Resend: not started
-- Site redesign next step: wire up `activity_log` writes at the four existing action points (job created, job status changed, invoice sent, invoice paid/failed), then rebuild the admin dashboard home page (revenue snapshot, job pipeline, action items, activity feed) to read from it
+- `supabase/0011_cleaner_status_activity_log.sql` (cleaner status-change logging) needs to be applied to production and verified, then a manual test: cleaner marks a job `in_progress`→`completed`, confirm two `job.status_changed` rows land with the cleaner's user id as `actor_id`
+- Site redesign next step after that: rebuild the admin dashboard home page (revenue snapshot, job pipeline, action items, activity feed) to read from `activity_log`
 
 ## Operating Rules
 - Hermes, Claude Code (on VPS), and Claude (chat/architect) may all touch this codebase — always git pull before starting work, always commit+push after finishing, to avoid drift.
