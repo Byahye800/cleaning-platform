@@ -49,12 +49,14 @@ function withAlpha(hex: string, alpha: number) {
 }
 
 const UNASSIGNED_KEY = 'unassigned';
+const JOB_SELECT = 'id, client_id, cleaner_id, address, service_type, scheduled_date, scheduled_time, status';
 
 export default function AdminRotaPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
   const [jobs, setJobs] = useState<JobRow[]>([]);
+  const [unscheduledJobs, setUnscheduledJobs] = useState<JobRow[]>([]);
   const [cleaners, setCleaners] = useState<CleanerRow[]>([]);
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,14 +75,20 @@ export default function AdminRotaPage() {
 
   useEffect(() => {
     (async () => {
-      const [cleanersRes, clientsRes] = await Promise.all([
+      const [cleanersRes, clientsRes, unscheduledRes] = await Promise.all([
         supabase.from('cleaners').select('id, name').order('name', { ascending: true }).limit(200),
         supabase.from('clients').select('id, name').limit(500),
+        // Not date-scoped like `jobs` below -- these have no scheduled_date at
+        // all, so they can't appear in any week's grid. Fetched once here
+        // rather than on every week navigation.
+        supabase.from('jobs').select(JOB_SELECT).is('scheduled_date', null).neq('status', 'cancelled').order('created_at', { ascending: false }).limit(100),
       ]);
       if (cleanersRes.error) setError(cleanersRes.error.message);
       else setCleaners((cleanersRes.data ?? []) as CleanerRow[]);
       if (clientsRes.error) setError(clientsRes.error.message);
       else setClients((clientsRes.data ?? []) as ClientRow[]);
+      if (unscheduledRes.error) setError(unscheduledRes.error.message);
+      else setUnscheduledJobs((unscheduledRes.data ?? []) as JobRow[]);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -91,9 +99,10 @@ export default function AdminRotaPage() {
     try {
       const { data, error } = await supabase
         .from('jobs')
-        .select('id, client_id, cleaner_id, address, service_type, scheduled_date, scheduled_time, status')
+        .select(JOB_SELECT)
         .gte('scheduled_date', weekStartStr)
         .lte('scheduled_date', weekEndStr)
+        .neq('status', 'cancelled')
         .order('scheduled_time', { ascending: true });
       if (error) throw error;
       setJobs((data ?? []) as JobRow[]);
@@ -217,6 +226,29 @@ export default function AdminRotaPage() {
             <button onClick={() => setEditingId(null)} disabled={busy} style={secondaryBtn}>
               Cancel
             </button>
+          </div>
+        </section>
+      )}
+
+      {unscheduledJobs.length > 0 && (
+        <section style={unscheduledSectionStyle}>
+          <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: spacing.xs }}>
+            <AlertCircle size={16} color={color.warning} />
+            Unscheduled jobs
+          </h3>
+          <div style={{ color: color.textSecondary, fontSize: font.size.sm, marginBottom: spacing.sm }}>
+            These have no scheduled date, so they can&apos;t appear on the calendar below. Assign a date via the Jobs page.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.xs }}>
+            {unscheduledJobs.map((job) => (
+              <div key={job.id} style={unscheduledRowStyle}>
+                <span style={{ fontWeight: font.weight.medium }}>{job.address}</span>
+                <span style={{ color: color.textSecondary }}>{clients.find((c) => c.id === job.client_id)?.name ?? job.client_id}</span>
+                <span style={{ color: color.textSecondary }}>
+                  {job.cleaner_id ? cleaners.find((c) => c.id === job.cleaner_id)?.name ?? job.cleaner_id : '(unassigned)'}
+                </span>
+              </div>
+            ))}
           </div>
         </section>
       )}
@@ -375,6 +407,25 @@ const editSectionStyle: React.CSSProperties = {
   border: `1px solid ${color.border}`,
   borderRadius: radius.lg,
   marginBottom: spacing.lg,
+};
+
+const unscheduledSectionStyle: React.CSSProperties = {
+  padding: spacing.lg,
+  border: `1px solid ${withAlpha(color.warning, 0.4)}`,
+  borderRadius: radius.lg,
+  marginBottom: spacing.lg,
+  background: withAlpha(color.warning, 0.06),
+};
+
+const unscheduledRowStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: spacing.md,
+  flexWrap: 'wrap',
+  padding: spacing.sm,
+  borderRadius: radius.md,
+  border: `1px solid ${color.border}`,
+  background: color.white,
+  fontSize: font.size.base,
 };
 
 const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 6 };
