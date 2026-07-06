@@ -2,18 +2,22 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ClipboardList, HardHat, LayoutDashboard, PoundSterling, Users, type LucideIcon } from 'lucide-react';
+import { Calendar, ClipboardList, HardHat, LayoutDashboard, PoundSterling, Users, type LucideIcon } from 'lucide-react';
 import LogoutButton from '@/components/LogoutButton';
 import { color, spacing, radius, font } from '@/lib/theme';
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 type NavGroup = { label: string | null; items: NavItem[] };
 
-// "Rota" is deliberately not listed here yet -- /admin/rota doesn't exist as
-// a route. Add it to the Operations group in the same pass that builds it.
 const NAV_GROUPS: NavGroup[] = [
   { label: null, items: [{ href: '/admin', label: 'Dashboard', icon: LayoutDashboard }] },
-  { label: 'Operations', items: [{ href: '/admin/jobs', label: 'Jobs', icon: ClipboardList }] },
+  {
+    label: 'Operations',
+    items: [
+      { href: '/admin/jobs', label: 'Jobs', icon: ClipboardList },
+      { href: '/admin/rota', label: 'Rota', icon: Calendar },
+    ],
+  },
   {
     label: 'Team & Clients',
     items: [
