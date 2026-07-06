@@ -20,6 +20,8 @@ export default function CleanerInboxPage() {
   const [cleaner, setCleaner] = useState<CleanerRow | null>(null);
   const [jobs, setJobs] = useState<JobRow[]>([]);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [openAttendanceJobIds, setOpenAttendanceJobIds] = useState<Set<string>>(new Set());
+  const [attendanceBusyId, setAttendanceBusyId] = useState<string | null>(null);
   async function load() {
     if (!supabase) return;
     setBusy(true); setError(null);
@@ -37,8 +39,15 @@ export default function CleanerInboxPage() {
         .order('scheduled_date', { ascending: true })
         .limit(200);
       if (jr.error) throw jr.error;
+      const ar = await supabase
+        .from('attendance')
+        .select('job_id')
+        .eq('cleaner_id', cr.data.id)
+        .is('check_out_at', null);
+      if (ar.error) throw ar.error;
       setCleaner(cr.data as CleanerRow);
       setJobs((jr.data ?? []) as JobRow[]);
+      setOpenAttendanceJobIds(new Set((ar.data ?? []).map((row: any) => row.job_id)));
     } catch (e) { setError(String(e)); }
     finally { setBusy(false); }
   }
@@ -61,6 +70,40 @@ export default function CleanerInboxPage() {
     }
   }
 
+  async function checkIn(jobId: string) {
+    setAttendanceBusyId(jobId);
+    setError(null);
+    try {
+      const { error: rpcError } = await supabase.rpc('cleaner_check_in', {
+        p_job_id: jobId,
+        p_user_agent: navigator.userAgent,
+      });
+      if (rpcError) throw rpcError;
+      await load();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setAttendanceBusyId(null);
+    }
+  }
+
+  async function checkOut(jobId: string) {
+    setAttendanceBusyId(jobId);
+    setError(null);
+    try {
+      const { error: rpcError } = await supabase.rpc('cleaner_check_out', {
+        p_job_id: jobId,
+        p_user_agent: navigator.userAgent,
+      });
+      if (rpcError) throw rpcError;
+      await load();
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setAttendanceBusyId(null);
+    }
+  }
+
   const th = { textAlign: 'left' as const, fontSize: 12, color: '#6b7280', padding: '10px 8px', borderBottom: '1px solid #e5e7eb' };
   const td = { padding: '10px 8px', borderBottom: '1px solid #f1f5f9', fontSize: 13, verticalAlign: 'top' as const };
   const actionBtn = { padding: '6px 10px', borderRadius: 6, border: '1px solid #111827', background: '#111827', color: 'white', fontSize: 12, cursor: 'pointer' };
@@ -70,7 +113,7 @@ export default function CleanerInboxPage() {
       {error && <div style={{ color: 'red' }}>{error}</div>}
       <p>{busy ? 'Loading...' : cleaner ? 'Hi ' + cleaner.name : 'Not signed in'}</p>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead><tr><th style={th}>Scheduled</th><th style={th}>Address</th><th style={th}>Service</th><th style={th}>Status</th><th style={th}>Notes</th><th style={th}>Action</th></tr></thead>
+        <thead><tr><th style={th}>Scheduled</th><th style={th}>Address</th><th style={th}>Service</th><th style={th}>Status</th><th style={th}>Notes</th><th style={th}>Attendance</th><th style={th}>Action</th></tr></thead>
         <tbody>
           {jobs.map((j) => (
             <tr key={j.id}>
@@ -79,6 +122,27 @@ export default function CleanerInboxPage() {
               <td style={td}>{j.service_type ?? '-'}</td>
               <td style={td}>{j.status}</td>
               <td style={td}>{j.notes ?? '-'}</td>
+              <td style={td}>
+                {j.status === 'completed' ? (
+                  '-'
+                ) : openAttendanceJobIds.has(j.id) ? (
+                  <button
+                    style={actionBtn}
+                    disabled={attendanceBusyId === j.id}
+                    onClick={() => checkOut(j.id)}
+                  >
+                    {attendanceBusyId === j.id ? 'Saving…' : 'Check out'}
+                  </button>
+                ) : (
+                  <button
+                    style={actionBtn}
+                    disabled={attendanceBusyId === j.id}
+                    onClick={() => checkIn(j.id)}
+                  >
+                    {attendanceBusyId === j.id ? 'Saving…' : 'Check in'}
+                  </button>
+                )}
+              </td>
               <td style={td}>
                 {j.status === 'completed' ? (
                   '-'
@@ -102,7 +166,7 @@ export default function CleanerInboxPage() {
               </td>
             </tr>
           ))}
-          {jobs.length === 0 && <tr><td style={td} colSpan={6}>No jobs assigned yet. Ask admin to assign one in Jobs.</td></tr>}
+          {jobs.length === 0 && <tr><td style={td} colSpan={7}>No jobs assigned yet. Ask admin to assign one in Jobs.</td></tr>}
         </tbody>
       </table>
     </div>
