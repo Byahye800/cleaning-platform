@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseClient';
 type CleanerRow = { id: string; user_id: string; name: string; status: string; };
 type JobRow = {
@@ -13,6 +13,7 @@ type JobRow = {
   cleaner_id: string | null;
   created_at: string;
 };
+type ChecklistItem = { id: string; label: string; is_checked: boolean; checked_at: string | null; sort_order: number };
 export default function CleanerInboxPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [busy, setBusy] = useState(false);
@@ -22,6 +23,10 @@ export default function CleanerInboxPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [openAttendanceJobIds, setOpenAttendanceJobIds] = useState<Set<string>>(new Set());
   const [attendanceBusyId, setAttendanceBusyId] = useState<string | null>(null);
+  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
+  const [checklistsByJob, setChecklistsByJob] = useState<Record<string, ChecklistItem[]>>({});
+  const [checklistLoadingId, setChecklistLoadingId] = useState<string | null>(null);
+  const [checklistItemBusyId, setChecklistItemBusyId] = useState<string | null>(null);
   async function load() {
     if (!supabase) return;
     setBusy(true); setError(null);
@@ -104,6 +109,51 @@ export default function CleanerInboxPage() {
     }
   }
 
+  async function loadChecklist(jobId: string) {
+    setChecklistLoadingId(jobId);
+    setError(null);
+    try {
+      const { error: seedError } = await supabase.rpc('cleaner_seed_job_checklist', { p_job_id: jobId });
+      if (seedError) throw seedError;
+      const { data, error: selError } = await supabase
+        .from('job_checklist_items')
+        .select('id,label,is_checked,checked_at,sort_order')
+        .eq('job_id', jobId)
+        .order('sort_order', { ascending: true });
+      if (selError) throw selError;
+      setChecklistsByJob((prev) => ({ ...prev, [jobId]: (data ?? []) as ChecklistItem[] }));
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setChecklistLoadingId(null);
+    }
+  }
+
+  async function toggleChecklistPanel(jobId: string) {
+    if (expandedJobId === jobId) { setExpandedJobId(null); return; }
+    setExpandedJobId(jobId);
+    if (!checklistsByJob[jobId]) {
+      await loadChecklist(jobId);
+    }
+  }
+
+  async function toggleChecklistItem(jobId: string, itemId: string, checked: boolean) {
+    setChecklistItemBusyId(itemId);
+    setError(null);
+    try {
+      const { error: rpcError } = await supabase.rpc('cleaner_toggle_checklist_item', {
+        p_item_id: itemId,
+        p_checked: checked,
+      });
+      if (rpcError) throw rpcError;
+      await loadChecklist(jobId);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setChecklistItemBusyId(null);
+    }
+  }
+
   const th = { textAlign: 'left' as const, fontSize: 12, color: '#6b7280', padding: '10px 8px', borderBottom: '1px solid #e5e7eb' };
   const td = { padding: '10px 8px', borderBottom: '1px solid #f1f5f9', fontSize: 13, verticalAlign: 'top' as const };
   const actionBtn = { padding: '6px 10px', borderRadius: 6, border: '1px solid #111827', background: '#111827', color: 'white', fontSize: 12, cursor: 'pointer' };
@@ -113,10 +163,11 @@ export default function CleanerInboxPage() {
       {error && <div style={{ color: 'red' }}>{error}</div>}
       <p>{busy ? 'Loading...' : cleaner ? 'Hi ' + cleaner.name : 'Not signed in'}</p>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead><tr><th style={th}>Scheduled</th><th style={th}>Address</th><th style={th}>Service</th><th style={th}>Status</th><th style={th}>Notes</th><th style={th}>Attendance</th><th style={th}>Action</th></tr></thead>
+        <thead><tr><th style={th}>Scheduled</th><th style={th}>Address</th><th style={th}>Service</th><th style={th}>Status</th><th style={th}>Notes</th><th style={th}>Attendance</th><th style={th}>Checklist</th><th style={th}>Action</th></tr></thead>
         <tbody>
           {jobs.map((j) => (
-            <tr key={j.id}>
+            <Fragment key={j.id}>
+            <tr>
               <td style={td}>{[j.scheduled_date, j.scheduled_time].filter(Boolean).join(' ') || '-'}</td>
               <td style={td}>{j.address}</td>
               <td style={td}>{j.service_type ?? '-'}</td>
@@ -144,6 +195,11 @@ export default function CleanerInboxPage() {
                 )}
               </td>
               <td style={td}>
+                <button style={actionBtn} onClick={() => toggleChecklistPanel(j.id)}>
+                  {expandedJobId === j.id ? 'Hide checklist' : 'Show checklist'}
+                </button>
+              </td>
+              <td style={td}>
                 {j.status === 'completed' ? (
                   '-'
                 ) : j.status === 'in_progress' ? (
@@ -165,8 +221,35 @@ export default function CleanerInboxPage() {
                 )}
               </td>
             </tr>
+            {expandedJobId === j.id && (
+              <tr>
+                <td style={td} colSpan={8}>
+                  {checklistLoadingId === j.id ? 'Loading checklist…' : (
+                    (checklistsByJob[j.id] ?? []).length === 0 ? 'No checklist items.' : (
+                      <ul style={{ margin: 0, paddingLeft: 18 }}>
+                        {(checklistsByJob[j.id] ?? []).map((item) => (
+                          <li key={item.id} style={{ marginBottom: 4 }}>
+                            <label style={{ cursor: j.status === 'completed' ? 'default' : 'pointer' }}>
+                              <input
+                                type="checkbox"
+                                checked={item.is_checked}
+                                disabled={j.status === 'completed' || checklistItemBusyId === item.id}
+                                onChange={(e) => toggleChecklistItem(j.id, item.id, e.target.checked)}
+                              />{' '}
+                              {item.label}
+                              {j.status === 'completed' && item.checked_at ? ` (checked ${new Date(item.checked_at).toLocaleString()})` : ''}
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                    )
+                  )}
+                </td>
+              </tr>
+            )}
+            </Fragment>
           ))}
-          {jobs.length === 0 && <tr><td style={td} colSpan={7}>No jobs assigned yet. Ask admin to assign one in Jobs.</td></tr>}
+          {jobs.length === 0 && <tr><td style={td} colSpan={8}>No jobs assigned yet. Ask admin to assign one in Jobs.</td></tr>}
         </tbody>
       </table>
     </div>
