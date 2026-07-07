@@ -21,9 +21,21 @@ export default function ResetPasswordPage() {
       if (event === 'PASSWORD_RECOVERY') setReady(true);
     });
 
-    supabase.auth.getSession().then(({ data }) => {
+    (async () => {
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+        if (code) {
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (!exchangeError) {
+            setReady(true);
+            return;
+          }
+        }
+      }
+      const { data } = await supabase.auth.getSession();
       if (data?.session) setReady(true);
-    });
+    })();
 
     return () => subscription.unsubscribe();
   }, [supabase]);
