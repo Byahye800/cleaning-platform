@@ -55,12 +55,13 @@ export default function AdminJobsPage() {
 
   async function loadAll() {
     setError(null);
-    const [jobsRes, clientsRes, cleanersRes] = await Promise.all([
+    const [jobsRes, billingRes, clientsRes, cleanersRes] = await Promise.all([
       supabase
         .from('jobs')
-        .select('*')
+        .select('id, client_id, cleaner_id, address, service_type, scheduled_date, scheduled_time, duration_hours, notes, status, created_at')
         .order('created_at', { ascending: false })
         .limit(200),
+      supabase.from('job_billing').select('job_id, price, payment_status, stripe_invoice_id'),
       supabase
         .from('clients')
         .select('id, name')
@@ -74,10 +75,24 @@ export default function AdminJobsPage() {
     ]);
 
     if (jobsRes.error) throw jobsRes.error;
+    if (billingRes.error) throw billingRes.error;
     if (clientsRes.error) throw clientsRes.error;
     if (cleanersRes.error) throw cleanersRes.error;
 
-    const jobs = (jobsRes.data ?? []) as JobRow[];
+    const billingByJobId = new Map(
+      ((billingRes.data ?? []) as { job_id: string; price: number | null; payment_status: string; stripe_invoice_id: string | null }[]).map(
+        (b) => [b.job_id, b]
+      )
+    );
+    const jobs = ((jobsRes.data ?? []) as Omit<JobRow, 'price' | 'payment_status' | 'stripe_invoice_id'>[]).map((j) => {
+      const billing = billingByJobId.get(j.id);
+      return {
+        ...j,
+        price: billing?.price ?? null,
+        payment_status: billing?.payment_status ?? 'unpaid',
+        stripe_invoice_id: billing?.stripe_invoice_id ?? null,
+      };
+    }) as JobRow[];
     setRows(jobs);
     setClients((clientsRes.data ?? []) as any);
     setCleaners((cleanersRes.data ?? []) as any);
@@ -99,7 +114,7 @@ export default function AdminJobsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function buildPayload() {
+  function buildJobPayload() {
     const payload: any = {
       client_id: form.client_id,
       cleaner_id: form.cleaner_id ? form.cleaner_id : null,
@@ -108,7 +123,6 @@ export default function AdminJobsPage() {
       scheduled_date: form.scheduled_date || null,
       scheduled_time: form.scheduled_time || null,
       duration_hours: form.duration_hours ? Number(form.duration_hours) : null,
-      price: form.price ? Number(form.price) : null,
       notes: form.notes || null,
       status: form.status || 'pending',
     };
@@ -118,11 +132,16 @@ export default function AdminJobsPage() {
     if (form.duration_hours && Number.isNaN(payload.duration_hours)) {
       throw new Error('duration_hours must be a number');
     }
-    if (form.price && Number.isNaN(payload.price)) {
-      throw new Error('price must be a number');
-    }
 
     return payload;
+  }
+
+  function extractPrice(): number | null {
+    const price = form.price ? Number(form.price) : null;
+    if (form.price && Number.isNaN(price)) {
+      throw new Error('price must be a number');
+    }
+    return price;
   }
 
   async function getActorId() {
@@ -134,13 +153,17 @@ export default function AdminJobsPage() {
     setBusy(true);
     setError(null);
     try {
-      const payload = buildPayload();
+      const payload = buildJobPayload();
+      const price = extractPrice();
       const { data: inserted, error: insertError } = await supabase
         .from('jobs')
         .insert(payload)
         .select('id')
         .single();
       if (insertError) throw insertError;
+
+      const { error: billingError } = await supabase.from('job_billing').upsert({ job_id: inserted.id, price });
+      if (billingError) throw billingError;
 
       const { error: logError } = await supabase.from('activity_log').insert({
         actor_id: await getActorId(),
@@ -164,11 +187,15 @@ export default function AdminJobsPage() {
     setBusy(true);
     setError(null);
     try {
-      const payload = buildPayload();
+      const payload = buildJobPayload();
+      const price = extractPrice();
       const previousStatus = rows.find((r) => r.id === id)?.status;
 
       const { error: updateError } = await supabase.from('jobs').update(payload).eq('id', id);
       if (updateError) throw updateError;
+
+      const { error: billingError } = await supabase.from('job_billing').upsert({ job_id: id, price });
+      if (billingError) throw billingError;
 
       if (previousStatus !== undefined && previousStatus !== payload.status) {
         const action =

@@ -62,10 +62,10 @@ export async function POST(request: NextRequest) {
     const newStatus = event.type === 'invoice.paid' ? 'paid' : 'failed';
 
     const { data: updatedRows, error } = await supabaseAdmin
-      .from('jobs')
+      .from('job_billing')
       .update({ payment_status: newStatus })
       .eq('stripe_invoice_id', invoice.id)
-      .select('id');
+      .select('job_id');
 
     if (error) {
       // Stripe already has the money — a failure here means our DB has drifted
@@ -92,12 +92,12 @@ export async function POST(request: NextRequest) {
           actor_id: null,
           action,
           entity_type: 'job',
-          entity_id: row.id,
+          entity_id: row.job_id,
         }))
       );
       if (logError) {
         console.error(
-          `[stripe-webhook] Failed to write activity_log for job(s) ${updatedRows.map((r) => r.id).join(', ')} (event ${event.id}): ${logError.message}`
+          `[stripe-webhook] Failed to write activity_log for job(s) ${updatedRows.map((r) => r.job_id).join(', ')} (event ${event.id}): ${logError.message}`
         );
       }
     }

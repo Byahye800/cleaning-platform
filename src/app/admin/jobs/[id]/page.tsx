@@ -157,16 +157,22 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     (async () => {
       setError(null);
       try {
-        const jobRes = await supabase.from('jobs').select('*').eq('id', id).maybeSingle();
+        const jobRes = await supabase
+          .from('jobs')
+          .select('id, client_id, cleaner_id, address, service_type, scheduled_date, scheduled_time, duration_hours, notes, status')
+          .eq('id', id)
+          .maybeSingle();
         if (jobRes.error) throw jobRes.error;
-        const jobData = jobRes.data as Job | null;
-        setJob(jobData);
-        if (!jobData) return;
+        const jobRow = jobRes.data as Omit<Job, 'price' | 'payment_status'> | null;
+        if (!jobRow) {
+          setJob(null);
+          return;
+        }
 
-        const [clientRes, cleanerRes, activityRes, checklistRes] = await Promise.all([
-          supabase.from('clients').select('name').eq('id', jobData.client_id).maybeSingle(),
-          jobData.cleaner_id
-            ? supabase.from('cleaners').select('name').eq('id', jobData.cleaner_id).maybeSingle()
+        const [clientRes, cleanerRes, activityRes, checklistRes, billingRes] = await Promise.all([
+          supabase.from('clients').select('name').eq('id', jobRow.client_id).maybeSingle(),
+          jobRow.cleaner_id
+            ? supabase.from('cleaners').select('name').eq('id', jobRow.cleaner_id).maybeSingle()
             : Promise.resolve({ data: null, error: null }),
           supabase
             .from('activity_log')
@@ -179,11 +185,17 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             .select('id,label,is_checked,checked_at,sort_order')
             .eq('job_id', id)
             .order('sort_order', { ascending: true }),
+          supabase.from('job_billing').select('price, payment_status').eq('job_id', id).maybeSingle(),
         ]);
         if (clientRes.error) throw clientRes.error;
         if (cleanerRes.error) throw cleanerRes.error;
         if (activityRes.error) throw activityRes.error;
         if (checklistRes.error) throw checklistRes.error;
+        if (billingRes.error) throw billingRes.error;
+
+        const billing = billingRes.data as { price: number | null; payment_status: string } | null;
+        const jobData: Job = { ...jobRow, price: billing?.price ?? null, payment_status: billing?.payment_status ?? 'unpaid' };
+        setJob(jobData);
 
         setClientName((clientRes.data as { name: string } | null)?.name ?? null);
         setCleanerName((cleanerRes.data as { name: string } | null)?.name ?? null);

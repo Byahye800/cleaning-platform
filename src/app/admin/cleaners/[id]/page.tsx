@@ -45,18 +45,45 @@ export default function CleanerProfilePage({ params }: { params: Promise<{ id: s
       setError(null);
       try {
         const [cleanerRes, jobsRes] = await Promise.all([
-          supabase.from('cleaners').select('*').eq('id', id).maybeSingle(),
+          supabase
+            .from('cleaners')
+            .select('id, name, email, phone, dbs_status, dbs_check_date, emergency_contact, skills, notes, status')
+            .eq('id', id)
+            .maybeSingle(),
           supabase
             .from('jobs')
-            .select('id, address, scheduled_date, scheduled_time, status, payment_status, price')
+            .select('id, address, scheduled_date, scheduled_time, status')
             .eq('cleaner_id', id)
             .order('created_at', { ascending: false })
             .limit(50),
         ]);
         if (cleanerRes.error) throw cleanerRes.error;
         if (jobsRes.error) throw jobsRes.error;
-        setCleaner(cleanerRes.data as Cleaner | null);
-        setJobs((jobsRes.data ?? []) as CleanerJob[]);
+
+        const cleanerRow = cleanerRes.data as Omit<Cleaner, 'hourly_rate'> | null;
+        if (!cleanerRow) {
+          setCleaner(null);
+        } else {
+          const rateRes = await supabase.from('cleaner_pay_rates').select('hourly_rate').eq('cleaner_id', id).maybeSingle();
+          if (rateRes.error) throw rateRes.error;
+          setCleaner({ ...cleanerRow, hourly_rate: (rateRes.data as { hourly_rate: number } | null)?.hourly_rate ?? '' });
+        }
+
+        const jobRows = (jobsRes.data ?? []) as Omit<CleanerJob, 'payment_status' | 'price'>[];
+        const jobIds = jobRows.map((j) => j.id);
+        const billingRes =
+          jobIds.length > 0
+            ? await supabase.from('job_billing').select('job_id, price, payment_status').in('job_id', jobIds)
+            : { data: [] as { job_id: string; price: number | null; payment_status: string }[], error: null };
+        if (billingRes.error) throw billingRes.error;
+        const billingByJobId = new Map((billingRes.data ?? []).map((b) => [b.job_id, b]));
+
+        setJobs(
+          jobRows.map((j) => {
+            const billing = billingByJobId.get(j.id);
+            return { ...j, price: billing?.price ?? null, payment_status: billing?.payment_status ?? 'unpaid' };
+          })
+        );
       } catch (e: any) {
         setError(e?.message ?? String(e));
       } finally {

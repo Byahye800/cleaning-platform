@@ -53,13 +53,26 @@ export default function AdminCleanersPage() {
 
   async function load() {
     setError(null);
-    const { data, error } = await supabase
-      .from('cleaners')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(200);
-    if (error) throw error;
-    setRows((data ?? []) as any);
+    const [cleanersRes, ratesRes] = await Promise.all([
+      supabase
+        .from('cleaners')
+        .select('id, user_id, name, email, phone, dbs_status, dbs_check_date, emergency_contact, skills, notes, status')
+        .order('created_at', { ascending: false })
+        .limit(200),
+      supabase.from('cleaner_pay_rates').select('cleaner_id, hourly_rate'),
+    ]);
+    if (cleanersRes.error) throw cleanersRes.error;
+    if (ratesRes.error) throw ratesRes.error;
+
+    const rateByCleanerId = new Map(
+      ((ratesRes.data ?? []) as { cleaner_id: string; hourly_rate: number }[]).map((r) => [r.cleaner_id, r.hourly_rate])
+    );
+    setRows(
+      ((cleanersRes.data ?? []) as any[]).map((c) => ({
+        ...c,
+        hourly_rate: rateByCleanerId.get(c.id) ?? '',
+      }))
+    );
   }
 
   useEffect(() => {
@@ -71,12 +84,16 @@ export default function AdminCleanersPage() {
     setBusy(true);
     setError(null);
     try {
+      const hourlyRate = form.hourly_rate === '' ? null : Number(form.hourly_rate);
+      if (!hourlyRate || Number.isNaN(hourlyRate)) {
+        throw new Error('hourly_rate must be a valid number');
+      }
+
       const payload: any = {
         user_id: form.user_id || null,
         name: form.name,
         email: form.email,
         phone: form.phone || null,
-        hourly_rate: form.hourly_rate === '' ? null : Number(form.hourly_rate),
         dbs_status: form.dbs_status || null,
         dbs_check_date: form.dbs_check_date || null,
         emergency_contact: form.emergency_contact || null,
@@ -85,13 +102,11 @@ export default function AdminCleanersPage() {
         status: form.status,
       };
 
-      // hourly_rate is NOT NULL in schema; ensure it’s present
-      if (!payload.hourly_rate || Number.isNaN(payload.hourly_rate)) {
-        throw new Error('hourly_rate must be a valid number');
-      }
-
-      const { error } = await supabase.from('cleaners').insert(payload);
+      const { data: inserted, error } = await supabase.from('cleaners').insert(payload).select('id').single();
       if (error) throw error;
+
+      const { error: rateError } = await supabase.from('cleaner_pay_rates').upsert({ cleaner_id: inserted.id, hourly_rate: hourlyRate });
+      if (rateError) throw rateError;
 
       setForm({ ...emptyForm });
       await load();
@@ -122,12 +137,14 @@ export default function AdminCleanersPage() {
     setBusy(true);
     setError(null);
     try {
+      const hourlyRate = Number(form.hourly_rate);
+      if (Number.isNaN(hourlyRate)) throw new Error('hourly_rate must be a valid number');
+
       const payload: any = {
         user_id: form.user_id || null,
         name: form.name,
         email: form.email,
         phone: form.phone || null,
-        hourly_rate: Number(form.hourly_rate),
         dbs_status: form.dbs_status || null,
         dbs_check_date: form.dbs_check_date || null,
         emergency_contact: form.emergency_contact || null,
@@ -135,10 +152,13 @@ export default function AdminCleanersPage() {
         notes: form.notes || null,
         status: form.status,
       };
-      if (Number.isNaN(payload.hourly_rate)) throw new Error('hourly_rate must be a valid number');
 
       const { error } = await supabase.from('cleaners').update(payload).eq('id', id);
       if (error) throw error;
+
+      const { error: rateError } = await supabase.from('cleaner_pay_rates').upsert({ cleaner_id: id, hourly_rate: hourlyRate });
+      if (rateError) throw rateError;
+
       await load();
     } catch (e: any) {
       setError(e?.message ?? String(e));

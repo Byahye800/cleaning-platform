@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
   const { data: job, error: jobError } = await supabase
     .from('jobs')
-    .select('id, client_id, price, status, payment_status, service_type, address, scheduled_date')
+    .select('id, client_id, status, service_type, address, scheduled_date')
     .eq('id', job_id)
     .maybeSingle();
 
@@ -45,15 +45,28 @@ export async function POST(request: NextRequest) {
   if (!job) {
     return NextResponse.json({ error: 'Job not found or not authorized' }, { status: 404 });
   }
+
+  const { data: billing, error: billingError } = await supabase
+    .from('job_billing')
+    .select('price, payment_status')
+    .eq('job_id', job.id)
+    .maybeSingle();
+
+  if (billingError) {
+    return NextResponse.json({ error: billingError.message }, { status: 500 });
+  }
+  if (!billing) {
+    return NextResponse.json({ error: 'Billing record not found for this job' }, { status: 404 });
+  }
   if (job.status !== 'completed') {
     return NextResponse.json({ error: 'Job must be marked completed before invoicing.' }, { status: 400 });
   }
-  if (job.price == null) {
+  if (billing.price == null) {
     return NextResponse.json({ error: 'Job needs a price set before invoicing.' }, { status: 400 });
   }
-  if (job.payment_status !== 'unpaid' && job.payment_status !== 'failed') {
+  if (billing.payment_status !== 'unpaid' && billing.payment_status !== 'failed') {
     return NextResponse.json(
-      { error: `Job payment_status is already '${job.payment_status}'.` },
+      { error: `Job payment_status is already '${billing.payment_status}'.` },
       { status: 400 }
     );
   }
@@ -78,11 +91,11 @@ export async function POST(request: NextRequest) {
   // payment_status from unpaid/failed to invoiced proceeds, so a double-click or retry
   // that loses the claim never reaches Stripe at all.
   const { data: claimedRows, error: claimError } = await supabase
-    .from('jobs')
+    .from('job_billing')
     .update({ payment_status: 'invoiced' })
-    .eq('id', job.id)
+    .eq('job_id', job.id)
     .in('payment_status', ['unpaid', 'failed'])
-    .select('id');
+    .select('job_id');
 
   if (claimError) {
     return NextResponse.json({ error: claimError.message }, { status: 500 });
@@ -130,7 +143,7 @@ export async function POST(request: NextRequest) {
       {
         customer: customerId,
         invoice: invoice.id,
-        amount: Math.round(Number(job.price) * 100),
+        amount: Math.round(Number(billing.price) * 100),
         currency: 'gbp',
         description: `${job.service_type ?? 'Cleaning service'} — ${job.address} (${job.scheduled_date ?? 'date TBC'})`,
       },
@@ -145,10 +158,10 @@ export async function POST(request: NextRequest) {
     await stripe.invoices.sendInvoice(finalized.id, {}, { idempotencyKey: `invoice-send-${job.id}` });
 
     const { data: updatedRows, error: updateJobError } = await supabase
-      .from('jobs')
+      .from('job_billing')
       .update({ stripe_invoice_id: finalized.id, invoiced_at: new Date().toISOString() })
-      .eq('id', job.id)
-      .select('id');
+      .eq('job_id', job.id)
+      .select('job_id');
 
     if (updateJobError) throw updateJobError;
     if (!updatedRows || updatedRows.length === 0) {
@@ -167,7 +180,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, stripe_invoice_id: finalized.id });
   } catch (e: any) {
-    await supabase.from('jobs').update({ payment_status: 'failed' }).eq('id', job.id);
+    await supabase.from('job_billing').update({ payment_status: 'failed' }).eq('job_id', job.id);
     return NextResponse.json({ error: e?.message ?? 'Failed to send invoice' }, { status: 500 });
   }
 }

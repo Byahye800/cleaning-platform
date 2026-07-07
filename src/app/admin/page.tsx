@@ -47,8 +47,8 @@ export default function AdminDashboardPage() {
       const weekEnd = isoDate(new Date(weekStartDate.getFullYear(), weekStartDate.getMonth(), weekStartDate.getDate() + 7));
 
       const [
-        failedRes,
-        completedNoInvoiceRes,
+        failedBillingRes,
+        unpaidBillingRes,
         unassignedTodayRes,
         thisMonthRes,
         lastMonthRes,
@@ -56,8 +56,8 @@ export default function AdminDashboardPage() {
         activityRes,
         openIssuesRes,
       ] = await Promise.all([
-        supabase.from('jobs').select('id, address, price').eq('payment_status', 'failed'),
-        supabase.from('jobs').select('id, address, price').eq('status', 'completed').eq('payment_status', 'unpaid'),
+        supabase.from('job_billing').select('job_id, price').eq('payment_status', 'failed'),
+        supabase.from('job_billing').select('job_id, price').eq('payment_status', 'unpaid'),
         supabase
           .from('jobs')
           .select('id, address, scheduled_time')
@@ -65,12 +65,12 @@ export default function AdminDashboardPage() {
           .is('cleaner_id', null)
           .neq('status', 'cancelled'),
         supabase
-          .from('jobs')
+          .from('job_billing')
           .select('price, payment_status, stripe_invoice_id')
           .gte('invoiced_at', thisMonthStart)
           .lt('invoiced_at', thisMonthEnd),
         supabase
-          .from('jobs')
+          .from('job_billing')
           .select('price, payment_status, stripe_invoice_id')
           .gte('invoiced_at', lastMonthStart)
           .lt('invoiced_at', thisMonthStart),
@@ -83,12 +83,38 @@ export default function AdminDashboardPage() {
         supabase.from('issues').select('id, job_id, description, jobs(address)').neq('status', 'resolved'),
       ]);
 
-      for (const res of [failedRes, completedNoInvoiceRes, unassignedTodayRes, thisMonthRes, lastMonthRes, weekRes, activityRes, openIssuesRes]) {
+      for (const res of [failedBillingRes, unpaidBillingRes, unassignedTodayRes, thisMonthRes, lastMonthRes, weekRes, activityRes, openIssuesRes]) {
         if (res.error) throw res.error;
       }
 
-      setFailedInvoices((failedRes.data ?? []) as FailedInvoiceJob[]);
-      setCompletedNoInvoice((completedNoInvoiceRes.data ?? []) as CompletedNoInvoiceJob[]);
+      const failedBillingRows = (failedBillingRes.data ?? []) as { job_id: string; price: number | null }[];
+      const unpaidBillingRows = (unpaidBillingRes.data ?? []) as { job_id: string; price: number | null }[];
+      const allCandidateJobIds = [...new Set([...failedBillingRows.map((r) => r.job_id), ...unpaidBillingRows.map((r) => r.job_id)])];
+
+      const jobsForBillingRes =
+        allCandidateJobIds.length > 0
+          ? await supabase.from('jobs').select('id, address, status').in('id', allCandidateJobIds)
+          : { data: [] as { id: string; address: string; status: string }[], error: null };
+      if (jobsForBillingRes.error) throw jobsForBillingRes.error;
+
+      const jobById = new Map((jobsForBillingRes.data ?? []).map((j) => [j.id, j]));
+
+      setFailedInvoices(
+        failedBillingRows.map((r) => ({
+          id: r.job_id,
+          address: jobById.get(r.job_id)?.address ?? '(unknown address)',
+          price: r.price,
+        }))
+      );
+      setCompletedNoInvoice(
+        unpaidBillingRows
+          .filter((r) => jobById.get(r.job_id)?.status === 'completed')
+          .map((r) => ({
+            id: r.job_id,
+            address: jobById.get(r.job_id)?.address ?? '(unknown address)',
+            price: r.price,
+          }))
+      );
       setUnassignedToday((unassignedTodayRes.data ?? []) as UnassignedTodayJob[]);
       setThisMonthRevenue(summarizeRevenue((thisMonthRes.data ?? []) as RevenueRow[]));
       setLastMonthRevenue(summarizeRevenue((lastMonthRes.data ?? []) as RevenueRow[]));

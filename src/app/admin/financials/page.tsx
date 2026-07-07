@@ -51,7 +51,7 @@ export default function FinancialsPage() {
 
       const [trendRes, completedActivityRes, agingRes, statusRes] = await Promise.all([
         supabase
-          .from('jobs')
+          .from('job_billing')
           .select('price, payment_status, stripe_invoice_id, invoiced_at')
           .gte('invoiced_at', historyStart),
         supabase
@@ -60,11 +60,11 @@ export default function FinancialsPage() {
           .eq('action', 'job.completed')
           .gte('created_at', historyStart),
         supabase
-          .from('jobs')
+          .from('job_billing')
           .select('price, invoiced_at')
           .in('payment_status', ['invoiced', 'failed'])
           .not('invoiced_at', 'is', null),
-        supabase.from('jobs').select('payment_status'),
+        supabase.from('job_billing').select('payment_status'),
       ]);
 
       for (const res of [trendRes, completedActivityRes, agingRes, statusRes]) {
