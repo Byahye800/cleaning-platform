@@ -25,6 +25,19 @@ type Job = {
 
 type ChecklistItem = { id: string; label: string; is_checked: boolean; checked_at: string | null; sort_order: number };
 
+type Issue = {
+  id: string;
+  job_id: string;
+  description: string;
+  status: string;
+  reported_by_role: string;
+  resolution_notes: string | null;
+  resolved_by: string | null;
+  resolved_at: string | null;
+  created_at: string;
+};
+type IssueComment = { id: string; issue_id: string; author: string; author_role: string; body: string; created_at: string };
+
 export default function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
@@ -34,8 +47,111 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   const [cleanerName, setCleanerName] = useState<string | null>(null);
   const [activityItems, setActivityItems] = useState<ActivityItem[]>([]);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [issueComments, setIssueComments] = useState<Record<string, IssueComment[]>>({});
+  const [replyText, setReplyText] = useState<Record<string, string>>({});
+  const [issueBusyId, setIssueBusyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  async function getActorId() {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.user?.id ?? null;
+  }
+
+  // issue_comments' author is scoped to a specific issue_id, so it can't be
+  // fetched until the issue ids are known -- same two-phase shape already
+  // used below for activity_log's actor lookup. Wrapped in one function so
+  // the initial load and post-write reloads (reply/resolve/reopen) share it.
+  async function loadIssues() {
+    const issuesRes = await supabase
+      .from('issues')
+      .select('id,job_id,description,status,reported_by_role,resolution_notes,resolved_by,resolved_at,created_at')
+      .eq('job_id', id)
+      .order('created_at', { ascending: false });
+    if (issuesRes.error) throw issuesRes.error;
+    const issuesData = (issuesRes.data ?? []) as Issue[];
+
+    const issueIds = issuesData.map((i) => i.id);
+    const commentsRes =
+      issueIds.length > 0
+        ? await supabase
+            .from('issue_comments')
+            .select('id,issue_id,author,author_role,body,created_at')
+            .in('issue_id', issueIds)
+            .order('created_at', { ascending: true })
+        : { data: [] as IssueComment[], error: null };
+    if (commentsRes.error) throw commentsRes.error;
+
+    const byIssue: Record<string, IssueComment[]> = {};
+    for (const c of (commentsRes.data ?? []) as IssueComment[]) {
+      (byIssue[c.issue_id] ??= []).push(c);
+    }
+    setIssues(issuesData);
+    setIssueComments(byIssue);
+  }
+
+  async function replyToIssue(issueId: string) {
+    const body = (replyText[issueId] ?? '').trim();
+    if (!body) return;
+    setIssueBusyId(issueId);
+    setError(null);
+    try {
+      const actorId = await getActorId();
+      const { error: insError } = await supabase.from('issue_comments').insert({
+        issue_id: issueId,
+        author: actorId,
+        author_role: 'admin',
+        body,
+      });
+      if (insError) throw insError;
+      setReplyText((prev) => ({ ...prev, [issueId]: '' }));
+      await loadIssues();
+    } catch (e: any) {
+      setError(e?.message ?? String(e));
+    } finally {
+      setIssueBusyId(null);
+    }
+  }
+
+  async function resolveIssue(issue: Issue) {
+    const notes = window.prompt('Resolution notes (optional):', '');
+    if (notes === null) return;
+    setIssueBusyId(issue.id);
+    setError(null);
+    try {
+      const actorId = await getActorId();
+      const { error: updError } = await supabase
+        .from('issues')
+        .update({
+          status: 'resolved',
+          resolution_notes: notes.trim() === '' ? null : notes.trim(),
+          resolved_by: actorId,
+          resolved_at: new Date().toISOString(),
+        })
+        .eq('id', issue.id);
+      if (updError) throw updError;
+      await loadIssues();
+    } catch (e: any) {
+      setError(e?.message ?? String(e));
+    } finally {
+      setIssueBusyId(null);
+    }
+  }
+
+  async function reopenIssue(issue: Issue) {
+    setIssueBusyId(issue.id);
+    setError(null);
+    try {
+      const { error: updError } = await supabase.from('issues').update({ status: 'reopened' }).eq('id', issue.id);
+      if (updError) throw updError;
+      await loadIssues();
+    } catch (e: any) {
+      setError(e?.message ?? String(e));
+    } finally {
+      setIssueBusyId(null);
+    }
+  }
 
   useEffect(() => {
     (async () => {
@@ -72,6 +188,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
         setClientName((clientRes.data as { name: string } | null)?.name ?? null);
         setCleanerName((cleanerRes.data as { name: string } | null)?.name ?? null);
         setChecklistItems((checklistRes.data ?? []) as ChecklistItem[]);
+        await loadIssues();
 
         const activity = (activityRes.data ?? []) as ActivityRow[];
         const actorIds = [...new Set(activity.map((r) => r.actor_id).filter((v): v is string => v !== null))];
@@ -150,6 +267,71 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
         )}
       </section>
 
+      <section style={{ ...sectionStyle, marginTop: spacing.xl }}>
+        <h3 style={{ marginTop: 0 }}>Issues</h3>
+        {issues.length === 0 ? (
+          <div style={{ color: color.textSecondary }}>No issues reported for this job.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.lg }}>
+            {issues.map((issue) => (
+              <div key={issue.id} style={issueCardStyle}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' }}>
+                  <span style={issueStatusBadgeStyle(issue.status)}>{issue.status}</span>
+                  <span style={{ fontSize: font.size.sm, color: color.textSecondary }}>
+                    reported by {issue.reported_by_role} · {new Date(issue.created_at).toLocaleString()}
+                  </span>
+                </div>
+                <div style={{ marginTop: spacing.sm }}>{issue.description}</div>
+                {issue.resolution_notes && (
+                  <div style={{ marginTop: spacing.sm, fontSize: font.size.sm, color: color.textSecondary }}>
+                    Resolution notes: {issue.resolution_notes}
+                  </div>
+                )}
+
+                <div style={{ marginTop: spacing.md, display: 'flex', flexDirection: 'column', gap: spacing.xs }}>
+                  {(issueComments[issue.id] ?? []).length === 0 ? (
+                    <div style={{ fontSize: font.size.sm, color: color.textSecondary }}>No replies yet.</div>
+                  ) : (
+                    (issueComments[issue.id] ?? []).map((c) => (
+                      <div key={c.id} style={{ fontSize: font.size.sm }}>
+                        <strong>{c.author_role}</strong>: {c.body}{' '}
+                        <span style={{ color: color.textSecondary }}>({new Date(c.created_at).toLocaleString()})</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div style={{ marginTop: spacing.md, display: 'flex', gap: spacing.sm, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                  <textarea
+                    style={textareaStyle}
+                    placeholder="Reply…"
+                    value={replyText[issue.id] ?? ''}
+                    onChange={(e) => setReplyText((prev) => ({ ...prev, [issue.id]: e.target.value }))}
+                  />
+                  <button
+                    style={btnStyle}
+                    disabled={issueBusyId === issue.id || !(replyText[issue.id] ?? '').trim()}
+                    onClick={() => replyToIssue(issue.id)}
+                  >
+                    {issueBusyId === issue.id ? 'Replying…' : 'Reply'}
+                  </button>
+                  {(issue.status === 'open' || issue.status === 'reopened') && (
+                    <button style={btnStyle} disabled={issueBusyId === issue.id} onClick={() => resolveIssue(issue)}>
+                      Resolve
+                    </button>
+                  )}
+                  {issue.status === 'resolved' && (
+                    <button style={btnStyle} disabled={issueBusyId === issue.id} onClick={() => reopenIssue(issue)}>
+                      Reopen
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       <div style={{ marginTop: spacing.xl }}>
         <ActivityFeed items={activityItems} />
       </div>
@@ -176,3 +358,55 @@ const errorBoxStyle: React.CSSProperties = {
   color: '#b91c1c',
   borderRadius: 8,
 };
+
+const issueCardStyle: React.CSSProperties = {
+  padding: spacing.md,
+  border: `1px solid ${color.border}`,
+  borderRadius: radius.md,
+};
+
+const textareaStyle: React.CSSProperties = {
+  flex: 1,
+  minWidth: 200,
+  minHeight: 40,
+  padding: '8px 10px',
+  borderRadius: radius.md,
+  border: `1px solid ${color.border}`,
+  fontSize: font.size.sm,
+  fontFamily: font.family,
+};
+
+const btnStyle: React.CSSProperties = {
+  padding: '8px 14px',
+  borderRadius: radius.md,
+  border: '1px solid #111827',
+  background: '#111827',
+  color: 'white',
+  fontSize: font.size.sm,
+  cursor: 'pointer',
+};
+
+function withAlpha(hex: string, alpha: number) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+const ISSUE_STATUS_COLORS: Record<string, string> = {
+  open: color.error,
+  reopened: color.warning,
+  resolved: color.success,
+};
+
+function issueStatusBadgeStyle(status: string): React.CSSProperties {
+  const c = ISSUE_STATUS_COLORS[status] ?? color.textSecondary;
+  return {
+    fontSize: font.size.sm,
+    fontWeight: font.weight.medium,
+    color: c,
+    background: withAlpha(c, 0.15),
+    padding: '2px 8px',
+    borderRadius: radius.full,
+  };
+}

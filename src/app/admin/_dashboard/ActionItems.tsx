@@ -8,16 +8,19 @@ import { invoiceDisabledReason } from '@/lib/jobInvoicing';
 export type FailedInvoiceJob = { id: string; address: string; price: number | null };
 export type CompletedNoInvoiceJob = { id: string; address: string; price: number | null };
 export type UnassignedTodayJob = { id: string; address: string; scheduled_time: string | null };
+export type OpenIssueJob = { id: string; job_id: string; address: string; description: string };
 
 export default function ActionItems({
   failedInvoices,
   completedNoInvoice,
   unassignedToday,
+  openIssues,
   onInvoiceSent,
 }: {
   failedInvoices: FailedInvoiceJob[];
   completedNoInvoice: CompletedNoInvoiceJob[];
   unassignedToday: UnassignedTodayJob[];
+  openIssues: OpenIssueJob[];
   onInvoiceSent: () => void;
 }) {
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -42,7 +45,7 @@ export default function ActionItems({
     }
   }
 
-  const totalCount = failedInvoices.length + completedNoInvoice.length + unassignedToday.length;
+  const totalCount = failedInvoices.length + completedNoInvoice.length + unassignedToday.length + openIssues.length;
 
   return (
     <section style={sectionStyle}>
@@ -80,6 +83,14 @@ export default function ActionItems({
               description={`${job.address} is scheduled today${job.scheduled_time ? ` at ${job.scheduled_time}` : ''} with no cleaner assigned`}
               actionLabel="Assign cleaner"
               href={`/admin/jobs?select=${job.id}`}
+            />
+          ))}
+          {openIssues.map((issue) => (
+            <ActionRow
+              key={`issue-${issue.id}`}
+              description={`Issue reported on ${issue.address}: ${issue.description}`}
+              actionLabel="View issue"
+              href={`/admin/jobs/${issue.job_id}`}
             />
           ))}
         </div>

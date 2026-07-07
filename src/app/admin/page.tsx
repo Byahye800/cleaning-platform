@@ -6,7 +6,7 @@ import { spacing } from '@/lib/theme';
 import { summarizeRevenue, isoDate, ZERO_REVENUE_TOTALS, type RevenueRow } from '@/lib/revenue';
 import { countByStatus } from '@/lib/counts';
 import { describeActivity, type ActivityRow } from '@/lib/activity';
-import ActionItems, { type CompletedNoInvoiceJob, type FailedInvoiceJob, type UnassignedTodayJob } from './_dashboard/ActionItems';
+import ActionItems, { type CompletedNoInvoiceJob, type FailedInvoiceJob, type OpenIssueJob, type UnassignedTodayJob } from './_dashboard/ActionItems';
 import RevenueSnapshot, { type RevenueTotals } from './_dashboard/RevenueSnapshot';
 import JobPipeline, { type StatusCount } from './_dashboard/JobPipeline';
 import ActivityFeed, { type ActivityItem } from './_dashboard/ActivityFeed';
@@ -26,6 +26,7 @@ export default function AdminDashboardPage() {
   const [failedInvoices, setFailedInvoices] = useState<FailedInvoiceJob[]>([]);
   const [completedNoInvoice, setCompletedNoInvoice] = useState<CompletedNoInvoiceJob[]>([]);
   const [unassignedToday, setUnassignedToday] = useState<UnassignedTodayJob[]>([]);
+  const [openIssues, setOpenIssues] = useState<OpenIssueJob[]>([]);
 
   const [thisMonthRevenue, setThisMonthRevenue] = useState<RevenueTotals>(ZERO_REVENUE_TOTALS);
   const [lastMonthRevenue, setLastMonthRevenue] = useState<RevenueTotals>(ZERO_REVENUE_TOTALS);
@@ -53,6 +54,7 @@ export default function AdminDashboardPage() {
         lastMonthRes,
         weekRes,
         activityRes,
+        openIssuesRes,
       ] = await Promise.all([
         supabase.from('jobs').select('id, address, price').eq('payment_status', 'failed'),
         supabase.from('jobs').select('id, address, price').eq('status', 'completed').eq('payment_status', 'unpaid'),
@@ -78,9 +80,10 @@ export default function AdminDashboardPage() {
           .select('id, actor_id, action, entity_type, entity_id, created_at')
           .order('created_at', { ascending: false })
           .limit(20),
+        supabase.from('issues').select('id, job_id, description, jobs(address)').neq('status', 'resolved'),
       ]);
 
-      for (const res of [failedRes, completedNoInvoiceRes, unassignedTodayRes, thisMonthRes, lastMonthRes, weekRes, activityRes]) {
+      for (const res of [failedRes, completedNoInvoiceRes, unassignedTodayRes, thisMonthRes, lastMonthRes, weekRes, activityRes, openIssuesRes]) {
         if (res.error) throw res.error;
       }
 
@@ -90,6 +93,11 @@ export default function AdminDashboardPage() {
       setThisMonthRevenue(summarizeRevenue((thisMonthRes.data ?? []) as RevenueRow[]));
       setLastMonthRevenue(summarizeRevenue((lastMonthRes.data ?? []) as RevenueRow[]));
       setPipelineCounts(countByStatus((weekRes.data ?? []) as { status: string }[]));
+      setOpenIssues(
+        ((openIssuesRes.data ?? []) as unknown as { id: string; job_id: string; description: string; jobs: { address: string } | null }[]).map(
+          (row) => ({ id: row.id, job_id: row.job_id, description: row.description, address: row.jobs?.address ?? '(unknown address)' })
+        )
+      );
 
       const activity = (activityRes.data ?? []) as ActivityRow[];
       const jobIds = [...new Set(activity.map((r) => r.entity_id))];
@@ -148,6 +156,7 @@ export default function AdminDashboardPage() {
             failedInvoices={failedInvoices}
             completedNoInvoice={completedNoInvoice}
             unassignedToday={unassignedToday}
+            openIssues={openIssues}
             onInvoiceSent={loadDashboard}
           />
 

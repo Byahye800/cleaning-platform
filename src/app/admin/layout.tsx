@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Calendar, ClipboardList, HardHat, LayoutDashboard, ListChecks, PoundSterling, Users, type LucideIcon } from 'lucide-react';
 import LogoutButton from '@/components/LogoutButton';
+import NotificationBadge from '@/components/NotificationBadge';
 import { color, spacing, radius, font } from '@/lib/theme';
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
@@ -48,8 +49,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           background: color.gray50,
         }}
       >
-        <div style={{ fontWeight: font.weight.bold, marginBottom: spacing.md, color: color.gray900 }}>
-          FM Pro Cleaning
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md }}>
+          <div style={{ fontWeight: font.weight.bold, color: color.gray900 }}>FM Pro Cleaning</div>
+          <NotificationBadge href="/admin" style={{ color: color.gray900 }} />
         </div>
         <nav style={{ display: 'flex', flexDirection: 'column', gap: spacing.lg }}>
           {NAV_GROUPS.map((group, i) => (
