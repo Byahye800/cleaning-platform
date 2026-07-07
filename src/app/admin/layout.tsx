@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Calendar, ClipboardList, HardHat, LayoutDashboard, PoundSterling, Users, type LucideIcon } from 'lucide-react';
+import { Calendar, ClipboardList, HardHat, LayoutDashboard, ListChecks, PoundSterling, Users, type LucideIcon } from 'lucide-react';
 import LogoutButton from '@/components/LogoutButton';
 import { color, spacing, radius, font } from '@/lib/theme';
 
@@ -16,6 +16,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/admin/jobs', label: 'Jobs', icon: ClipboardList },
       { href: '/admin/rota', label: 'Rota', icon: Calendar },
+      { href: '/admin/checklists', label: 'Checklists', icon: ListChecks },
     ],
   },
   {
