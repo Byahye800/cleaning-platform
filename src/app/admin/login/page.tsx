@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createSupabaseBrowserClient } from '@/lib/supabaseClient';
 import { ROLE_HOME, type Role } from '@/lib/roleHome';
+import { color, spacing, radius, font } from '@/lib/theme';
 
 async function resolveHomeForUser(supabase: SupabaseClient, userId: string): Promise<string | null> {
   const { data } = await supabase
@@ -91,89 +92,104 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <main style={{ padding: 24, fontFamily: 'system-ui, sans-serif', maxWidth: 520 }}>
-      <h1 style={{ marginBottom: 8 }}>FM Pro Cleaning</h1>
-      <p style={{ marginBottom: 16, color: '#6b7280' }}>
-        Sign in to your account.
-      </p>
-
-      {resetSuccess && (
-        <div style={{ padding: 10, marginBottom: 16, border: '1px solid #bbf7d0', background: '#f0fdf4', color: '#166534', borderRadius: 8 }}>
-          Password updated — sign in with your new password.
+    <main
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: color.gray50,
+        fontFamily: font.family,
+        padding: spacing.lg,
+      }}
+    >
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 400,
+          background: color.white,
+          border: `1px solid ${color.border}`,
+          borderRadius: radius.lg,
+          padding: spacing.xxl,
+        }}
+      >
+        <div style={{ marginBottom: spacing.xl, textAlign: 'center' }}>
+          <div style={{ fontWeight: font.weight.heavy, fontSize: font.size.xl, color: color.navy, letterSpacing: '-0.01em' }}>
+            FM Pro Cleaning
+          </div>
+          <p style={{ marginTop: spacing.sm, color: color.textSecondary, fontSize: font.size.base }}>
+            Sign in to your account
+          </p>
         </div>
-      )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span>Email</span>
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            style={inputStyle}
-            autoComplete="email"
-          />
-        </label>
-
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span>Password</span>
-          <input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            type="password"
-            style={inputStyle}
-            autoComplete="current-password"
-          />
-        </label>
-
-        <button
-          type="button"
-          onClick={handleForgotPassword}
-          disabled={resetBusy}
-          style={{
-            alignSelf: 'flex-start',
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            color: '#2563eb',
-            fontSize: 13,
-            cursor: 'pointer',
-            textDecoration: 'underline',
-          }}
-        >
-          {resetBusy ? 'Sending…' : 'Forgot password?'}
-        </button>
-
-        {resetNotice && (
-          <div style={{ padding: 10, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1e40af', borderRadius: 8 }}>
-            {resetNotice}
+        {resetSuccess && (
+          <div style={{ padding: spacing.md, marginBottom: spacing.lg, border: '1px solid #bbf7d0', background: '#f0fdf4', color: color.success, borderRadius: radius.md, fontSize: font.size.sm }}>
+            Password updated — sign in with your new password.
           </div>
         )}
 
-        {error && (
-          <div style={{ padding: 10, border: '1px solid #fecaca', background: '#fff1f2', color: '#b91c1c', borderRadius: 8 }}>
-            {error}
-          </div>
-        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.lg }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: spacing.xs }}>
+            <span style={{ fontSize: font.size.sm, color: color.textSecondary, fontWeight: font.weight.medium }}>Email</span>
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              style={inputStyle}
+              autoComplete="email"
+            />
+          </label>
 
-        <button
-          onClick={signIn}
-          disabled={busy || !email || !password}
-          style={buttonStyle}
-        >
-          {busy ? 'Signing in…' : 'Sign in'}
-        </button>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: spacing.xs }}>
+            <span style={{ fontSize: font.size.sm, color: color.textSecondary, fontWeight: font.weight.medium }}>Password</span>
+            <input
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              type="password"
+              style={inputStyle}
+              autoComplete="current-password"
+            />
+          </label>
 
-      </div>
+          <button
+            type="button"
+            onClick={handleForgotPassword}
+            disabled={resetBusy}
+            style={{
+              alignSelf: 'flex-start',
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              color: color.navy,
+              fontSize: font.size.sm,
+              cursor: 'pointer',
+              textDecoration: 'underline',
+            }}
+          >
+            {resetBusy ? 'Sending…' : 'Forgot password?'}
+          </button>
 
-      <div style={{ marginTop: 18 }}>
-        <button
-          onClick={() => router.replace('/')}
-          style={{ ...buttonStyle, background: '#fff', border: '1px solid #e5e7eb', color: '#111827' }}
-        >
-          Back to home
-        </button>
+          {resetNotice && (
+            <div style={{ padding: spacing.md, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#1e40af', borderRadius: radius.md, fontSize: font.size.sm }}>
+              {resetNotice}
+            </div>
+          )}
+
+          {error && (
+            <div style={{ padding: spacing.md, border: '1px solid #fecaca', background: '#fff1f2', color: color.error, borderRadius: radius.md, fontSize: font.size.sm }}>
+              {error}
+            </div>
+          )}
+
+          <button
+            onClick={signIn}
+            disabled={busy || !email || !password}
+            style={buttonStyle}
+          >
+            {busy ? 'Signing in…' : 'Sign in'}
+          </button>
+        </div>
       </div>
     </main>
   );
@@ -181,17 +197,19 @@ export default function AdminLoginPage() {
 
 const inputStyle: React.CSSProperties = {
   padding: '10px 12px',
-  borderRadius: 8,
-  border: '1px solid #e5e7eb',
+  borderRadius: radius.md,
+  border: `1px solid ${color.border}`,
   outline: 'none',
+  fontSize: font.size.base,
 };
 
 const buttonStyle: React.CSSProperties = {
   padding: '10px 12px',
-  borderRadius: 8,
-  border: '1px solid #111827',
-  background: '#111827',
-  color: 'white',
-  fontWeight: 600,
+  borderRadius: radius.md,
+  border: `1px solid ${color.navy}`,
+  background: color.navy,
+  color: color.textInverse,
+  fontWeight: font.weight.medium,
+  fontSize: font.size.base,
   cursor: 'pointer',
 };

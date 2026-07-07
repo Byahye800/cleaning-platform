@@ -27,7 +27,13 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/admin/cleaners', label: 'Cleaners', icon: HardHat },
     ],
   },
-  { label: 'Finance', items: [{ href: '/admin/financials', label: 'Financials', icon: PoundSterling }] },
+  {
+    label: 'Finance',
+    items: [
+      { href: '/admin/financials', label: 'Financials', icon: PoundSterling },
+      { href: '/admin/payroll', label: 'Payroll', icon: PoundSterling },
+    ],
+  },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
