@@ -39,7 +39,7 @@ Live app running on Hostinger VPS at http://187.124.112.253:3002, PM2-managed, d
 - The "Assign cleaner" action item's `?select=<id>` deep link into `/admin/jobs` hasn't been explicitly confirmed to pre-select the right row
 - `DASHBOARD-ROTA-EXPANSION-SPEC.md` itself never actually landed in this repo (reconfirmed 2026-07-06 -- checked working tree and full git history again, still nowhere). Both halves it covered are now built from in-chat descriptions of scope instead: Financials (see above) and Rota (see above).
 - Site redesign, Financials, the Visual Language Upgrade, and the Rota page are all now complete. Recurring shifts, leave requests, availability management, and shift swapping were explicitly out of scope for the Rota page's first pass -- not started, no design decisions made yet.
-- Phase 4 (Issues) schema/RLS/functions/triggers are live (see above), but no UI exists yet -- admin can't view/resolve issues and cleaners can't report/reply to one through the app. Scope for that UI to be sent separately.
+- Correction (2026-07-08): Phase 4 (Issues) UI is fully built and live -- admin per-job issue list/reply/resolve/reopen, cleaner report/reply in the inbox -- live-verified end-to-end. This replaces an earlier, stale version of this line that incorrectly said no UI existed yet.
 
 ## Operating Rules
 - Hermes, Claude Code (on VPS), and Claude (chat/architect) may all touch this codebase — always git pull before starting work, always commit+push after finishing, to avoid drift.
