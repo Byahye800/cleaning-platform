@@ -4,6 +4,10 @@ Running dated log of work sessions on this codebase. Newest entries at the top.
 
 ## 2026-07-08 (continued) — Phase 3 Checklist UI live-verified end-to-end, then integration audit
 
+
+## 2026-07-08 (paused) — Safe checkpoint before Phase 6
+
+- Session paused here by explicit request. Safe checkpoint: all work this session is committed and pushed to `main` (no uncommitted diffs, no open branches), all test data created during verification was deleted and re-confirmed at 0, and the app is left in its normal working state (no schema/migration mid-flight, no half-applied RLS changes). Next session should resume with either addressing the open gaps listed in the prior entry or scoping Phase 6 (Contracts/Schedules/Recurrence), per user direction.
 - Live-verified the full checklist feature (schema + cleaner UI + admin UI all previously build-verified only, never clicked through): created a real template ("TEST Standard Clean", universal fallback) with two items via `/admin/checklists`, confirmed the admin template CRUD (create/add item/remove item/deactivate/delete) all worked correctly.
 - Created a throwaway test job (status `pending`) assigned to the real test cleaner, logged in as that cleaner, opened the checklist panel in `/cleaner/inbox` -- confirmed `cleaner_seed_job_checklist` seeds correctly and is idempotent, toggled one item checked via `cleaner_toggle_checklist_item`, then did a full page reload and confirmed the checked state persisted (verified independently at the database layer via SQL: `job_checklist_items.is_checked`/`checked_at` matched exactly, and the corresponding `activity_log` row `checklist.item_checked` was present).
 - Confirmed the completed-job read-only guard: on the pre-existing completed test job, the checklist panel renders but checkboxes are disabled -- clicking one produced no state change, confirming both the UI disable and the underlying `cleaner_toggle_checklist_item` status check work as designed.
