@@ -2,6 +2,14 @@
 
 Running dated log of work sessions on this codebase. Newest entries at the top.
 
+## 2026-07-08 (continued) — Phase 3 Checklist UI live-verified end-to-end, then integration audit
+
+- Live-verified the full checklist feature (schema + cleaner UI + admin UI all previously build-verified only, never clicked through): created a real template ("TEST Standard Clean", universal fallback) with two items via `/admin/checklists`, confirmed the admin template CRUD (create/add item/remove item/deactivate/delete) all worked correctly.
+- Created a throwaway test job (status `pending`) assigned to the real test cleaner, logged in as that cleaner, opened the checklist panel in `/cleaner/inbox` -- confirmed `cleaner_seed_job_checklist` seeds correctly and is idempotent, toggled one item checked via `cleaner_toggle_checklist_item`, then did a full page reload and confirmed the checked state persisted (verified independently at the database layer via SQL: `job_checklist_items.is_checked`/`checked_at` matched exactly, and the corresponding `activity_log` row `checklist.item_checked` was present).
+- Confirmed the completed-job read-only guard: on the pre-existing completed test job, the checklist panel renders but checkboxes are disabled -- clicking one produced no state change, confirming both the UI disable and the underlying `cleaner_toggle_checklist_item` status check work as designed.
+- All test data removed afterward and confirmed via count query (test jobs, checklist_templates, checklist_template_items, job_checklist_items all back to 0). Documented this verification in `PROJECT-STATUS.md`'s Phase 3 line (previously showed build-only, no live-verification note) and committed.
+- Per explicit instruction, paused before starting Phase 6 (Contracts/Schedules/Recurrence) to first run a full integration/security/stability audit across everything built so far, per the standing rule of never leaving multiple unfinished construction zones open at once. That audit is tracked as a separate follow-up and had not yet been completed at the time of this entry.
+
 ## 2026-07-08 — Docs correction: 7-phase roadmap clarified, Phase 4/5 live-verified, Stage 5 deep-fix documented
 
 - Confirmed the project's true phase roadmap against `ROTA-CORE-ARCHITECTURE-SPEC.md` (kept in the local working folder, never committed to this repo) rather than assuming: Phase 0 (Sites) through Phase 7 (Client portal integration + Reporting), with Phase 6 being Contracts/Schedules/Recurrence. Distinct from both the migration-file "Phase1"/"Phase2" naming (`0001_init_phase1.sql`, `0003_rls_phase2_policies.sql`) and this log's own informal "Stage 1-5" labels used below for the security-hardening work. Per the spec, Phases 0-5 are confirmed done and Phase 6 is next.
