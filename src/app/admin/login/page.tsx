@@ -34,7 +34,7 @@ export default function AdminLoginPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get('reset') === 'success') setResetSuccess(true);
+    if (params.get('reset') === 'success') setResetSuccess(true); if (params.get('error') === 'account_disabled') setError('Your account is not active. Contact your administrator.');
   }, []);
 
   useEffect(() => {
