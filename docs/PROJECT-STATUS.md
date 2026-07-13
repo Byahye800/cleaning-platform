@@ -3,6 +3,18 @@
 ## Current State (as of 2026-07-07)
 Live app running on Hostinger VPS at http://187.124.112.253:3002, PM2-managed, deployed via git pull from GitHub (Byahye800/cleaning-platform). Claude Code installed on VPS for direct development. No domain/HTTPS yet — pending.
 
+## Stage 2 -- Account Onboarding/Invitation Lifecycle (as of 2026-07-12)
+
+**Phase**: Stage 2 (account onboarding/invitation lifecycle) is part of "Prereq A," which blocks Sites UI wiring, Shift lifecycle groundwork, Phase 6 (Contracts/Schedules/Recurrence), and Phase 7 (Client reporting) until it is fully complete end-to-end.
+
+**Completed**: Stage 2.1 (schema migration: status redefinition, lifecycle columns, unique constraints); Stage 2.1A (revised design doc, delivery-method research, activity_log inspection); Stage 2.2a (`account_invitations` table, trigger, revoke/grants -- applied, verified, committed, pushed); Stage 2.2b (`reserve`/`finalize`/`reconcile`/`mark_account_invitation_failed`/`accept_account_invitation` functions -- implemented, formally reviewed, corrected, verified including a real two-connection concurrency test, committed, pushed, independently audited); migration `0027_account_invitation_lifecycle_completion.sql` (closes all six mandatory Stage 2.2b audit findings -- DB-enforced expiry, reachable expired/cancelled/superseded states, tested failure-compensation, explicit logged reconciliation across all 5 outcomes, full audit logging for all 9 functions, single-role-per-identity re-assessed -- implemented live, verified live twice including a full independent fresh re-verification, committed and pushed at `9d758b4`).
+
+**Remaining (Stage 2 track)**: Stage 2.2c -- invite + resend API routes (18-section specification already written and locked: 7-day TTL default, 5 resend cap with sliding TTL renewal, 20 invite/resend actions per admin per hour rate limit, reconciliation API ships with 2.2c, `activity_log.metadata jsonb` established as the standing audit convention, single-role-per-identity kept as a provisional invariant pending Phase 6); Stage 2.3 (`proxy.ts` routing changes); Stage 2.4 (onboarding page + admin approval action); Stage 2.5 (narrow manual admin insert UI + full live verification).
+
+**Blockers**: none on the Stage 2.2c prerequisite -- that checkpoint is closed. Stage 2.2c has simply not been started yet, by design, not by any technical obstacle.
+
+**Next action**: begin Stage 2.2c per `STAGE-2-2C-SPECIFICATION.md`.
+
 ## What's Working
 - Admin portal: login, Clients CRUD, Cleaners CRUD, Jobs CRUD — all confirmed working end-to-end with real data
 - Cleaner-to-job assignment: admin can assign a cleaner to a job via dropdown
