@@ -43,6 +43,10 @@ e940da6  Stage 2.4: add onboarding page                              <- final ap
 
 **Full-tree independent verification (fresh clone, this session):** `tsc --noEmit` clean across the whole tree. `eslint` on all 7 Stage 2.4 files: 0 new issues, exactly the 2 pre-existing `Unexpected any` errors in the two admin detail pages (confirmed pre-existing against the unmodified baseline before this session's edits). `next build`: compiles successfully, TypeScript passes, fails collecting page data for the unrelated `/api/stripe/send-invoice` route due to a missing Stripe API key in this sandbox (no `.env.local`) — not a Stage 2.4 regression, disclosed honestly per the verification-tier rule.
 
+## Staging environment track (separate from the Stage 1–2.5 / Phase 0–7 tracks above and below — infrastructure, not application code)
+
+A brand-new, fully isolated Supabase project (`jwdfzgibrijcyypibhjw`, "Cleaning Platform - Staging") was created and its schema successfully bootstrapped and verified as of 2026-07-13. Checkpoints 1, 2, and 3-Remediation are done; Checkpoint 3's *original* literal-replay attempt failed and was correctly stopped (not silently patched). Checkpoints 4–8 (Auth, SMTP, Vercel, integrity audit, Stage 2.5 live E2E) are not started. Full detail: `docs/STAGING-CHECKPOINT-HISTORY.md`, `docs/STAGING-RECOVERY-STATE.md`, `docs/NEXT-SESSION-HANDOVER.md`, `docs/KNOWN-ISSUES-REGISTER.md` (issue `STAGING-001`: the repository's literal migration-history replay path `0001→0003→0005` is broken on a fresh database — a real, previously-undiscovered governance defect, not yet fixed).
+
 ## Phase 0–7 roadmap status (product feature roadmap — separate from the Stage 1–2.5 track below)
 
 | Phase | Status |

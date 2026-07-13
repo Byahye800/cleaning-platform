@@ -20,4 +20,10 @@ Evidence tier for all of Stage 2.4: **Statically verified** (tsc/ESLint/build) p
 
 ## Open decisions blocking nothing right now, but flagged for the user
 
-None currently blocking Stage 2.4 (closed). Before Stage 2.5 starts, the user should decide whether to prioritize the live E2E verification pass first, or move on to Phase 0/6/7 product work and treat Stage 2.5 as a later hardening pass — this is a s
+None currently blocking Stage 2.4 (closed). Before Stage 2.5 starts, the user should decide whether to prioritize the live E2E verification pass first, or move on to Phase 0/6/7 product work and treat Stage 2.5 as a later hardening pass — this is a scheduling/prioritization decision, not a technical blocker, and has not been made yet. (Note: this sentence was previously cut off mid-word in the committed file — completed here during the 2026-07-13 staging closeout pass, no content beyond finishing the sentence was added or changed.)
+
+## Staging environment track (separate work stream, not part of the Stage 1–2.5 app-code track above)
+
+**Current task: none in progress.** Checkpoint 3 Remediation closed out 2026-07-13 — staging (`jwdfzgibrijcyypibhjw`) reset and successfully re-bootstrapped via migrations `0005` through `0027`, full structural/security verification passed. **Next approved task: Checkpoint 4 — staging Auth configuration — but it has NOT been started**, and requires explicit user go-ahead before beginning, per the standing checkpoint-gate discipline used throughout this track. Full detail: `docs/NEXT-SESSION-HANDOVER.md` (read this first if picking up staging work), `docs/STAGING-CHECKPOINT-HISTORY.md`, `docs/STAGING-RECOVERY-STATE.md`, `docs/KNOWN-ISSUES-REGISTER.md`.
+
+**Do not** run migrations `0001`–`0003` against staging (or any fresh database) in sequence with `0005+` — that is the exact known-broken replay path (`STAGING-001`). **Do not** touch production as part of any staging work.
