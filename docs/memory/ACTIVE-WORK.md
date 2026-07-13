@@ -4,26 +4,26 @@
 
 ## Current task
 
-**Build the permanent project memory system** (this file tree), per explicit user instruction 2026-07-13: "Stop implementation... Do not continue Stage 2.4 until the memory system is complete." Status: in progress this session. See the project memory audit delivered alongside this file set for what's done vs. outstanding.
+**None in progress.** Stage 2.4 closed out this session (2026-07-13) — all 7 files pushed and remote-verified, HEAD `e940da6` = `origin/main`. Awaiting the user's direction on what to pick up next: Stage 2.5 (retire the legacy manual-UUID admin insert path + full live E2E browser verification of the whole invite -> onboard -> activate flow) is the natural next step, but has not been started and is not assumed to be next without confirmation.
 
-## Task immediately before this one (paused, will resume after memory system is complete and approved)
+## Task immediately before this one (now closed)
 
-**Finish Stage 2.4** (onboarding UI + admin-gated activation). Exact resume point:
+**Stage 2.4 — onboarding UI + admin-gated activation.** All 7 approved files done:
+1. `finalize/route.ts` identity-match hardening — restored verbatim from ADR-007, commit `7045ccb`.
+2. `admin/cleaners/[id]/page.tsx` activation UI — rebuilt, commit `48b990d`.
+3. `admin/clients/[id]/page.tsx` activation UI — rebuilt, commit `a75ca5b`.
+4. `onboarding/page.tsx` — new file, full rebuild from `STAGE-2-4-DESIGN-SPECIFICATION.md` against the three already-shipped API routes' actual response shapes, commit `e940da6`.
+5. Full-tree static verification run on a fresh independent clone: `tsc` clean, `eslint` clean (2 pre-existing baseline errors only, confirmed not new), `next build` compiles/type-checks clean with one disclosed unrelated sandbox limitation (`/api/stripe/send-invoice`, missing Stripe key).
+6. Every file remote-verified via fresh clone byte-diff against the locally-verified version before being marked done.
 
-1. Reapply the `finalize/route.ts` identity-match edit — this one is a true restoration, not a rebuild. The exact insert block is preserved verbatim in `ARCHITECTURE-DECISIONS.md` ADR-007 and in the original recovery report. Apply it to the current baseline (88 lines, confirmed unchanged on `origin/main`).
-2. Rebuild `src/app/onboarding/page.tsx`, `src/app/admin/cleaners/[id]/page.tsx`, `src/app/admin/clients/[id]/page.tsx` against the structural spec preserved in `STAGE-2-4-DESIGN-SPECIFICATION.md` (its full A–T design + Amendment 1) — these are functional rebuilds against approved requirements, not byte-restores of a lost draft. Say so plainly when reporting on them.
-3. Run TypeScript, ESLint, and a production build on the complete rebuilt tree before touching GitHub at all.
-4. Present the diffs for review before any GitHub action (standing rule).
-5. Push the remaining 4 files via the GitHub web editor, following the standing multi-commit disclosure rule.
-6. Fetch `origin/main`, diff every pushed file against the locally-verified version, confirm HEAD = `origin/main`, confirm clean status, report every commit hash.
-7. Write the full A–Q Stage 2.4 completion report (structure specified in the original full-implementation-approval message — preserved in `SESSION-SUMMARIES/`).
+Evidence tier for all of Stage 2.4: **Statically verified** (tsc/ESLint/build) plus **DB-adjacent verified** for the three already-shipped routes (their underlying RPCs were live-tested in earlier stages). **No browser/E2E verification has been performed** for the onboarding page or the two activation UI buttons — nobody has clicked through the actual invite link -> PKCE exchange -> password set -> profile form -> accept -> admin-activate sequence in a real browser against a real Supabase project this engagement. That is explicitly Stage 2.5's job, not assumed done here.
 
 ## Open decisions blocking nothing right now, but flagged for the user
 
-None currently blocking. (If a genuinely-necessary 8th file is discovered during the Stage 2.4 rebuild, the standing rule is STOP and report before expanding scope — do not silently add it.)
+None currently blocking Stage 2.4 (closed). Before Stage 2.5 starts, the user should decide whether to prioritize the live E2E verification pass first, or move on to Phase 0/6/7 product work and treat Stage 2.5 as a later hardening pass — this is a sequencing choice, not a technical blocker.
 
 ## What NOT to do without explicit user approval
 
-- Do not resume Stage 2.4 code changes until the user confirms the memory system is complete and gives explicit go-ahead (their instruction was explicit: "Do not continue Stage 2.4 until the memory system is complete").
-- Do not touch `proxy.ts`, `roleHome.ts`, `admin/login/page.tsx`, `reset-password/page.tsx`, migration 0027, or any invitation-state vocabulary — all explicitly out of Stage 2.4 scope.
-- Do not begin Stage 2.5, Phase 0/6/7, or any of the remaining tick-list items until Stage 2.4 is fully closed and its completion report delivered.
+- Do not silently begin Stage 2.5, Phase 0/6/7, or any remaining tick-list item without the user confirming that's the next priority.
+- Do not touch `proxy.ts`, `roleHome.ts`, `admin/login/page.tsx`, `reset-password/page.tsx`, migration 0027, or any invitation-state vocabulary — all were out of Stage 2.4 scope and remain unchanged.
+- Do not claim browser/E2E verification has happened for any Stage 2.4 file — it hasn't. Keep evidence-tier language honest per `VERIFICATION-REGISTER.md`.
