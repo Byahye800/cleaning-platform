@@ -1,0 +1,8 @@
+# 2026-07-08 — Docs Correction, Checklist/Phase4/Phase5 Live-Verified, Integration Audit, Phase 6 + Onboarding Scoping
+
+**What happened, in order:**
+1. Corrected two stale claims in `PROJECT-STATUS.md` (Phase 4 UI wrongly marked not-built; Phase 5 browser verification wrongly marked still-open). Documented the earlier, previously-undocumented "deep fix" column-split hardening (see ARCHITECTURE-DECISIONS.md ADR-001).
+2. Live-verified the full Checklist feature end-to-end for the first time (real template, real toggle, persisted across reload, completed-job guard confirmed). Then, per standing rule ("never leave multiple unfinished construction zones open"), ran a full integration/security/stability audit before starting Phase 6: RLS on all 22 tables confirmed, zero orphaned test data, role-gating still correct.
+3. **Paused before Phase 6** at user's explicit request to scope it properly first. Wrote `PHASE-6-SITES-CANCELLATION-SCOPING.md` (contracts/schedules/cover_requests model, full Shift Modal spec with every button mapped to a `SECURITY DEFINER` RPC) and `ONBOARDING-FLOW-SCOPING.md` (the original 3-state `pending`/`pending_profile_complete`/`active` onboarding design — later superseded by Stage 2.1's 3-dimension model). Both explicitly planning-only, not implemented.
+
+**Outcome:** safe checkpoint, all test data cleaned up and re-confirmed zero, three markdown deliverables committed. Two open questions left on the Phase 6 doc (unify cancellation/cover-request concepts? build calendar UI now or later?) and one on onboarding (where does the admin review queue live in the UI?) — none resolved this session.
