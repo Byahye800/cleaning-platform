@@ -4,24 +4,29 @@
 
 ## One-line position
 
-Stage 2.4 (onboarding UI + admin-gated activation) is **complete and fully pushed**. All 7 approved files are on `origin/main`, remote-verified byte-identical against local, independently re-cloned and statically re-checked (TypeScript clean, ESLint clean except 2 pre-existing baseline errors, production build compiles/type-checks clean with one disclosed unrelated sandbox limitation). Real browser/E2E verification has not been performed — see `VERIFICATION-REGISTER.md`. Stage 2.5 (retire the legacy manual-UUID admin insert path, full live E2E) is the next open track.
+Stage 2.4 (onboarding UI + admin-gated activation) is **complete and fully pushed**. All 7 approved files are on `origin/main`, remote-verified byte-identical against local, independently re-cloned and statically re-checked (TypeScript clean, ESLint clean except 2 pre-existing baseline errors, production build compiles/type-checks clean with one disclosed unrelated sandbox limitation). Real browser/E2E verification has not been performed — see `VERIFICATION-REGISTER.md`. Stage 2.5 (full live E2E, plus a *separately-approved* decision on the legacy manual-UUID form — repo docs describe demotion to emergency/dev-only, not deletion; see `VERIFICATION-REGISTER.md`) is the next open track.
 
 ## Verified repository state (re-confirm this at the start of every session — do not trust this number without re-checking)
 
+**Important:** the exact HEAD hash below goes stale the moment any memory file (including this one) is next committed — that already happened once this session (Stage 2.4's application code finished at `e940da6`, then a memory-update commit `26002d5` moved HEAD past it, then a documentation-closeout commit moved it again). Treat every hash in this file as "true as of the commit that wrote it," never as a permanently-current fact. Always re-verify via a fresh clone: `git log -1 --format=%H` against `origin/main`.
+
 ```
-origin/main HEAD as of 2026-07-13 (this session, end of Stage 2.4): e940da6
+Stage 2.4 application code finalized at: e940da6 (src/app/onboarding/page.tsx, the last of 7 files)
+Memory-system update commit: 26002d5 (docs/memory/CURRENT-STATE.md, docs/memory/ACTIVE-WORK.md)
+Documentation-closeout commit: <see latest SESSION-SUMMARIES entry or re-verify HEAD directly>
 Branch: main (only branch used for real work; phase4-ui-review and
               phase5-ui-review exist remotely but are stale/unrelated)
-Working tree: clean (confirmed via fresh clone this session)
+Working tree: clean (confirmed via fresh clone at each of the checkpoints above)
 ```
 
-Last 5 commits on `origin/main` as of this writing:
+Commits from the Stage 2.4 application-code push, oldest first:
 ```
-e940da6  Stage 2.4: add onboarding page
-a75ca5b  Stage 2.4: add admin activation UI to client detail page
-48b990d  Stage 2.4: add admin activation UI to cleaner detail page
-7045ccb  Stage 2.4: harden finalize route with identity-match check
 19c66f5  Stage 2.4: add admin account activation route
+7045ccb  Stage 2.4: harden finalize route with identity-match check
+48b990d  Stage 2.4: add admin activation UI to cleaner detail page
+a75ca5b  Stage 2.4: add admin activation UI to client detail page
+e940da6  Stage 2.4: add onboarding page                              <- final app-code commit
+26002d5  Update memory: CURRENT-STATE and ACTIVE-WORK reflect Stage 2.4 completion   <- later, memory-only
 ```
 
 ## Stage 2.4 file-by-file state — ALL 7 FILES DONE
@@ -64,16 +69,8 @@ a75ca5b  Stage 2.4: add admin activation UI to client detail page
 | Stage 2.2c | Done — invite/resend/cancel/reconcile/finalize/sweep API routes |
 | Stage 2.3 | Done — lifecycle-aware `proxy.ts` routing, approved with one caveat (no `/onboarding` route yet — exactly what 2.4 built) |
 | **Stage 2.4** | **Done — all 7 files pushed, remote-verified, statically clean. See `SESSION-SUMMARIES/2026-07-13-...md` and the Stage 2.4 completion report for full evidence-tier detail.** |
-| Stage 2.5 | Not started — retire manual-UUID admin insert path, full live E2E browser verification. Next open track. |
+| Stage 2.5 | Not started — full live E2E browser verification is confirmed scope; legacy manual-UUID form treatment is documented as demotion to emergency/dev-only (not deletion — see `docs/ONBOARDING-FLOW-SCOPING.md`), pending explicit approval on exact treatment. Next open track. |
 
 ## 20-item product tick list (audited 2026-07-10, updated with what's changed since — full detail in `VERIFICATION-REGISTER.md`)
 
-Complete: #1, 2, 4, 9, 14 (fixed+deployed 2026-07-09), 17. Stage 2.4 (#8 onboarding, #13 admin approval) now statically/dev-complete — real E2E still open, tracked under Stage 2.5. Built since audit: #11 (resend, shipped in Stage 2.2c). Unverified: #10. Still not implemented: #5, 6, 7, 12, 15, 16, 18 (partial), 19, 20.
-
-## Non-phase production blockers (independent of any phase/stage above)
-
-No domain/HTTPS. No refund handling. No Resend/Twilio accounts (user's own prerequisite, not buildable by an agent). No monitoring/alerting pass. Login rate-limiting not explicitly verified. Two orphaned backup tables (`cleaners_backup_pre_stage5c`, `jobs_backup_pre_stage5c`) safely locked down but not yet dropped.
-
-## What changed most recently
-
-This session: recovered from a mid-Stage-2.4 context-loss event, built the permanent project memory system (this file tree), then completed Stage 2.4 — restored the finalize-route identity-match hardening verbatim from ADR-007, rebuilt both admin detail pages' activation UI, and rebuilt `onboarding/page.tsx` from the design spec against the three already-shipped API routes' real contracts. All 7 files pushed and remote-verified. No real browser/E2E test has been run — that remains Stage 2.5's job.
+Complete: #1, 2, 4, 9, 14 (fixed+dep

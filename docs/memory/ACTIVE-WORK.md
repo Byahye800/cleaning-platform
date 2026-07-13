@@ -4,7 +4,7 @@
 
 ## Current task
 
-**None in progress.** Stage 2.4 closed out this session (2026-07-13) — all 7 files pushed and remote-verified, HEAD `e940da6` = `origin/main`. Awaiting the user's direction on what to pick up next: Stage 2.5 (retire the legacy manual-UUID admin insert path + full live E2E browser verification of the whole invite -> onboard -> activate flow) is the natural next step, but has not been started and is not assumed to be next without confirmation.
+**None in progress.** Stage 2.4 closed out this session (2026-07-13) — all 7 files pushed and remote-verified. A documentation-only closeout pass then corrected a stale HEAD reference in this very file and brought `VERIFICATION-REGISTER.md`/the session summary in line with Stage 2.4's actual completion. **Do not hard-code a HEAD commit hash as a fact in this file** — every commit that touches a memory file necessarily moves `origin/main` HEAD past whatever hash was last written here. To find the true current HEAD, run `git log -1 --format=%H` against a fresh clone of `origin/main`. Awaiting the user's direction on what to pick up next: Stage 2.5 (full live E2E browser verification of the whole invite -> onboard -> activate flow, plus a *separately-approved* decision on the legacy manual-UUID form — see `VERIFICATION-REGISTER.md` for the scope evidence, which documents demotion to emergency/dev-only, not deletion) is the natural next step, but has not been started and is not assumed to be next without confirmation.
 
 ## Task immediately before this one (now closed)
 
@@ -20,10 +20,4 @@ Evidence tier for all of Stage 2.4: **Statically verified** (tsc/ESLint/build) p
 
 ## Open decisions blocking nothing right now, but flagged for the user
 
-None currently blocking Stage 2.4 (closed). Before Stage 2.5 starts, the user should decide whether to prioritize the live E2E verification pass first, or move on to Phase 0/6/7 product work and treat Stage 2.5 as a later hardening pass — this is a sequencing choice, not a technical blocker.
-
-## What NOT to do without explicit user approval
-
-- Do not silently begin Stage 2.5, Phase 0/6/7, or any remaining tick-list item without the user confirming that's the next priority.
-- Do not touch `proxy.ts`, `roleHome.ts`, `admin/login/page.tsx`, `reset-password/page.tsx`, migration 0027, or any invitation-state vocabulary — all were out of Stage 2.4 scope and remain unchanged.
-- Do not claim browser/E2E verification has happened for any Stage 2.4 file — it hasn't. Keep evidence-tier language honest per `VERIFICATION-REGISTER.md`.
+None currently blocking Stage 2.4 (closed). Before Stage 2.5 starts, the user should decide whether to prioritize the live E2E verification pass first, or move on to Phase 0/6/7 product work and treat Stage 2.5 as a later hardening pass — this is a s

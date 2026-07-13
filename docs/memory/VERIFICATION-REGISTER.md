@@ -23,31 +23,22 @@ Every significant claim in this project's history, with its actual evidence tier
 |---|---|---|
 | `src/app/api/auth/invitation/status/route.ts` (Stage 2.4) | Pushed, live on `origin/main`, statically verified pre-compaction (per prior-session claim, not independently re-run this session) | No live route call, no browser test |
 | `src/app/api/onboarding/profile/route.ts` (Stage 2.4) | Same as above | Same as above |
-| `src/app/api/admin/accounts/activate/route.ts` (Stage 2.4) | Pushed, live on `origin/main`. **Weakest evidence chain of the Stage 2.4 files**: its final commit was closed out in a *later* session based on a tail-end screenshot of previously-typed content, not a fresh top-to-bottom diff against a known-good local source (the local source didn't survive a context-loss event in between) | No live route call, no browser test, no fresh full-content re-diff |
+| `src/app/api/admin/accounts/activate/route.ts` (Stage 2.4) | Pushed, live on `origin/main`. **Weakest evidence chain of the three earliest Stage 2.4 files**: its final commit was closed out in a *later* session based on a tail-end screenshot of previously-typed content, not a fresh top-to-bottom diff against a known-good local source (the local source didn't survive a context-loss event in between) | No live route call, no browser test, no fresh full-content re-diff |
+| `src/app/api/auth/invitation/finalize/route.ts` identity-match hardening (Stage 2.4) | **Done.** Restored verbatim from ADR-007 against the confirmed-unchanged 88-line baseline, commit `7045ccb`. Remote-verified byte-identical via fresh clone. `tsc`/`eslint` clean on an independent fresh clone | No live route call, no browser test — the identity-mismatch branch (`INVITATION_IDENTITY_MISMATCH`) has never actually been triggered against a real session |
+| `src/app/admin/cleaners/[id]/page.tsx` activation UI (Stage 2.4) | **Done.** Rebuilt (not restored — no verbatim source survived), commit `48b990d`. Remote-verified byte-identical via fresh clone. `tsc` clean; `eslint` shows only the 1 pre-existing `any` error, confirmed present in the unmodified baseline by a before/after swap test | No browser click of the "Activate account" button has ever occurred |
+| `src/app/admin/clients/[id]/page.tsx` activation UI (Stage 2.4) | **Done.** Same pattern as above, commit `a75ca5b` | Same as above |
+| `src/app/onboarding/page.tsx` (Stage 2.4) | **Done.** New file, full rebuild (no verbatim source survived the context-loss event), reconstructed from `STAGE-2-4-DESIGN-SPECIFICATION.md` against the actual, already-shipped contracts of the three routes above (re-read directly from `origin/main`, not assumed). Commit `e940da6`. Remote-verified byte-identical via fresh clone. `tsc`/`eslint` clean on the full tree, independent fresh clone | **Zero browser/E2E evidence of any kind.** No PKCE exchange, no real invite email, no click through any of its 11 UI states has ever happened. This is the single largest evidence gap in the whole Stage 2.4 delivery and is explicitly Stage 2.5's job, not assumed done here |
 | Attendance/Payroll chain (Phase 2/5) generally | Trigger logic confirmed correct against live schema via `pg_get_functiondef` | Zero rows in production `attendance` table — the chain has literally never fired on real, non-test data |
 
-## Designed/implemented only, not statically re-verified after context loss (2026-07-13 event)
+## Stage 2.4 context-loss event — resolved
 
-| Item | Status |
-|---|---|
-| `finalize/route.ts` identity-match edit | Approved, verbatim-preserved (ADR-007), not yet reapplied to the file |
-| `src/app/onboarding/page.tsx` | Approved, structurally specified, **no verbatim source survives** — will be a rebuild, not a restore |
-| `src/app/admin/cleaners/[id]/page.tsx` edit | Approved, structurally specified, no verbatim diff survives — rebuild |
-| `src/app/admin/clients/[id]/page.tsx` edit | Approved, structurally specified, no verbatim diff survives — rebuild |
+The four files below were listed here through 2026-07-13 as "designed/implemented only, not statically re-verified after context loss." All four are now complete, pushed, and remote-verified (see the table above) — this section is kept as a historical record of what the gap looked like mid-session, not as a current status.
 
-## Designed only, zero implementation
+| Item | Status as of the context-loss event (historical) | Resolution |
+|---|---|---|
+| `finalize/route.ts` identity-match edit | Approved, verbatim-preserved (ADR-007), not yet reapplied to the file | Reapplied verbatim, commit `7045ccb` |
+| `src/app/onboarding/page.tsx` | Approved, structurally specified, no verbatim source survives — flagged as a rebuild, not a restore | Rebuilt, commit `e940da6` |
+| `src/app/admin/cleaners/[id]/page.tsx` edit | Approved, structurally specified, no verbatim diff survives — rebuild | Rebuilt, commit `48b990d` |
+| `src/app/admin/clients/[id]/page.tsx` edit | Approved, structurally specified, no verbatim diff survives — rebuild | Rebuilt, commit `a75ca5b` |
 
-Phase 6 (Contracts/Schedules/Recurrence) and its full Shift Modal spec, Phase 0 Sites UI, cover/reassignment full queue, shift cancellation workflow, site instructions structured fields, refund handling, attachments/photo upload, internal-vs-public notes split, cleaner payroll/service-history/issues-history own-view pages.
-
-## Explicitly flagged as unverified (not merely "not yet done" — actively uncertain)
-
-- **Expired invite-link behavior (tick #10).** Governed by Supabase Auth's own settings; never actually tested with a real expired link.
-- **Supabase invite-resend behavior when called twice for the same email** — flagged in `STAGE-2-ONBOARDING-LIFECYCLE-ASSESSMENT.md` §7 as needing real testing during implementation, not assumed. Status of that testing: not confirmed in any doc read.
-- **Login rate-limiting/lockout** — believed to rely on Supabase Auth defaults, never explicitly confirmed.
-- **VPS deployment currency** — commits on `origin/main` are not automatically live on the production VPS; deployment is a separate manual step (`git pull` + `npm run build` + `pm2 restart`). Multiple session-log entries note code committed but "not yet re-verified live." Do not assume `origin/main` state matches what a real user experiences without an explicit deployment check.
-
-## Known-stale documentation (do not treat as current fact without cross-checking)
-
-- `docs/PROJECT-STATUS.md` — last substantively updated 2026-07-07/12, does not reflect Stage 2.2c through 2.4. Use `CURRENT-STATE.md` instead for anything Stage 2-related; `PROJECT-STATUS.md` is still reasonably current for the Phase 0-7 operational feature set as of its last edit.
-- `PHASE5-PAYROLL-AND-ACCESS-AUDIT.md` — described a client-visible "Payment" column that was later confirmed removed from live code; superseded by later audits.
-- `DASHBOARD-ROTA-EXPANSION-SPEC.md` referenced as "the basis for" the Financials/Rota build, but multiple sessions independently confirmed this file never actually existed in the repo or its git history — the actual build proceeded from in-chat descriptions instead. Treat any reference to this file as historical color, not a real artifact to look for.
+## Designed only, zero implement
