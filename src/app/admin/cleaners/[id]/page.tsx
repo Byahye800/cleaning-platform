@@ -19,6 +19,8 @@ type Cleaner = {
   skills: string[] | null;
   notes: string | null;
   status: string;
+  invitation_status: string;
+  onboarding_status: string;
 };
 
 type CleanerJob = {
@@ -39,6 +41,9 @@ export default function CleanerProfilePage({ params }: { params: Promise<{ id: s
   const [jobs, setJobs] = useState<CleanerJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activating, setActivating] = useState(false);
+  const [activateMessage, setActivateMessage] = useState<string | null>(null);
+  const [activateError, setActivateError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -47,7 +52,9 @@ export default function CleanerProfilePage({ params }: { params: Promise<{ id: s
         const [cleanerRes, jobsRes] = await Promise.all([
           supabase
             .from('cleaners')
-            .select('id, name, email, phone, dbs_status, dbs_check_date, emergency_contact, skills, notes, status')
+            .select(
+              'id, name, email, phone, dbs_status, dbs_check_date, emergency_contact, skills, notes, status, invitation_status, onboarding_status'
+            )
             .eq('id', id)
             .maybeSingle(),
           supabase
@@ -92,6 +99,36 @@ export default function CleanerProfilePage({ params }: { params: Promise<{ id: s
     })();
   }, [supabase, id]);
 
+  const eligibleForActivation =
+    cleaner?.status === 'restricted' &&
+    cleaner?.invitation_status === 'invite_accepted' &&
+    cleaner?.onboarding_status === 'submitted';
+
+  async function handleActivate() {
+    if (activating) return;
+    setActivating(true);
+    setActivateMessage(null);
+    setActivateError(null);
+    try {
+      const res = await fetch('/api/admin/accounts/activate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'cleaner', id }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok || !body?.ok) {
+        setActivateError(body?.error?.message ?? 'Activation failed. Please try again.');
+        return;
+      }
+      setActivateMessage('Account activated.');
+      setCleaner((prev) => (prev ? { ...prev, status: 'active', onboarding_status: 'approved' } : prev));
+    } catch {
+      setActivateError('Something went wrong. Please try again.');
+    } finally {
+      setActivating(false);
+    }
+  }
+
   if (loading) return <div>Loading…</div>;
   if (error) return <div style={errorBoxStyle}>{error}</div>;
   if (!cleaner) return <div style={errorBoxStyle}>Cleaner not found (or RLS denied SELECT).</div>;
@@ -110,6 +147,24 @@ export default function CleanerProfilePage({ params }: { params: Promise<{ id: s
         </div>
       </div>
 
+      {eligibleForActivation && (
+        <section style={{ ...sectionStyle, marginBottom: spacing.lg, borderColor: color.navy }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, flexWrap: 'wrap' }}>
+            <div>
+              <strong>Onboarding complete, pending review</strong>
+              <div style={{ fontSize: font.size.sm, color: color.textSecondary }}>
+                This account has accepted its invitation and submitted onboarding. Activating grants full portal access.
+              </div>
+            </div>
+            <button onClick={handleActivate} disabled={activating} style={activateButtonStyle}>
+              {activating ? 'Activating…' : 'Activate account'}
+            </button>
+          </div>
+          {activateMessage && <div style={{ marginTop: spacing.sm, color: color.success }}>{activateMessage}</div>}
+          {activateError && <div style={{ marginTop: spacing.sm, color: '#b91c1c' }}>{activateError}</div>}
+        </section>
+      )}
+
       <section style={sectionStyle}>
         <div style={gridStyle}>
           <DetailField label="Email" value={cleaner.email} />
@@ -120,6 +175,8 @@ export default function CleanerProfilePage({ params }: { params: Promise<{ id: s
           <DetailField label="Emergency contact" value={cleaner.emergency_contact} />
           <DetailField label="Skills" value={cleaner.skills && cleaner.skills.length > 0 ? cleaner.skills.join(', ') : null} />
           <DetailField label="Notes" value={cleaner.notes} />
+          <DetailField label="Invitation status" value={cleaner.invitation_status} />
+          <DetailField label="Onboarding status" value={cleaner.onboarding_status} />
         </div>
       </section>
 
@@ -165,6 +222,16 @@ const jobRowStyle: React.CSSProperties = {
   borderBottom: `1px solid ${color.border}`,
   color: color.textPrimary,
   flexWrap: 'wrap',
+};
+
+const activateButtonStyle: React.CSSProperties = {
+  padding: `${spacing.sm}px ${spacing.lg}px`,
+  borderRadius: radius.md,
+  border: 'none',
+  background: color.navy,
+  color: color.textInverse,
+  fontSize: font.size.sm,
+  cursor: 'pointer',
 };
 
 const errorBoxStyle: React.CSSProperties = {
