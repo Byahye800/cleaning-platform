@@ -16,6 +16,8 @@ type Client = {
   agreed_rate: number | null;
   notes: string | null;
   status: string;
+  invitation_status: string;
+  onboarding_status: string;
 };
 
 type ClientJob = {
@@ -36,13 +38,22 @@ export default function ClientProfilePage({ params }: { params: Promise<{ id: st
   const [jobs, setJobs] = useState<ClientJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activating, setActivating] = useState(false);
+  const [activateMessage, setActivateMessage] = useState<string | null>(null);
+  const [activateError, setActivateError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       setError(null);
       try {
         const [clientRes, jobsRes] = await Promise.all([
-          supabase.from('clients').select('*').eq('id', id).maybeSingle(),
+          supabase
+            .from('clients')
+            .select(
+              'id, name, address, contact_email, contact_phone, agreed_rate, notes, status, invitation_status, onboarding_status'
+            )
+            .eq('id', id)
+            .maybeSingle(),
           supabase
             .from('jobs')
             .select('id, address, scheduled_date, scheduled_time, status')
@@ -77,6 +88,36 @@ export default function ClientProfilePage({ params }: { params: Promise<{ id: st
     })();
   }, [supabase, id]);
 
+  const eligibleForActivation =
+    client?.status === 'restricted' &&
+    client?.invitation_status === 'invite_accepted' &&
+    client?.onboarding_status === 'submitted';
+
+  async function handleActivate() {
+    if (activating) return;
+    setActivating(true);
+    setActivateMessage(null);
+    setActivateError(null);
+    try {
+      const res = await fetch('/api/admin/accounts/activate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'client', id }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok || !body?.ok) {
+        setActivateError(body?.error?.message ?? 'Activation failed. Please try again.');
+        return;
+      }
+      setActivateMessage('Account activated.');
+      setClient((prev) => (prev ? { ...prev, status: 'active', onboarding_status: 'approved' } : prev));
+    } catch {
+      setActivateError('Something went wrong. Please try again.');
+    } finally {
+      setActivating(false);
+    }
+  }
+
   if (loading) return <div>Loading…</div>;
   if (error) return <div style={errorBoxStyle}>{error}</div>;
   if (!client) return <div style={errorBoxStyle}>Client not found (or RLS denied SELECT).</div>;
@@ -95,6 +136,24 @@ export default function ClientProfilePage({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
+      {eligibleForActivation && (
+        <section style={{ ...sectionStyle, marginBottom: spacing.lg, borderColor: color.navy }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, flexWrap: 'wrap' }}>
+            <div>
+              <strong>Onboarding complete, pending review</strong>
+              <div style={{ fontSize: font.size.sm, color: color.textSecondary }}>
+                This account has accepted its invitation and submitted onboarding. Activating grants full portal access.
+              </div>
+            </div>
+            <button onClick={handleActivate} disabled={activating} style={activateButtonStyle}>
+              {activating ? 'Activating…' : 'Activate account'}
+            </button>
+          </div>
+          {activateMessage && <div style={{ marginTop: spacing.sm, color: color.success }}>{activateMessage}</div>}
+          {activateError && <div style={{ marginTop: spacing.sm, color: '#b91c1c' }}>{activateError}</div>}
+        </section>
+      )}
+
       <section style={sectionStyle}>
         <div style={gridStyle}>
           <DetailField label="Address" value={client.address} />
@@ -102,6 +161,8 @@ export default function ClientProfilePage({ params }: { params: Promise<{ id: st
           <DetailField label="Contact phone" value={client.contact_phone} />
           <DetailField label="Agreed rate" value={client.agreed_rate != null ? `£${client.agreed_rate}` : null} />
           <DetailField label="Notes" value={client.notes} />
+          <DetailField label="Invitation status" value={client.invitation_status} />
+          <DetailField label="Onboarding status" value={client.onboarding_status} />
         </div>
       </section>
 
@@ -147,6 +208,16 @@ const jobRowStyle: React.CSSProperties = {
   borderBottom: `1px solid ${color.border}`,
   color: color.textPrimary,
   flexWrap: 'wrap',
+};
+
+const activateButtonStyle: React.CSSProperties = {
+  padding: `${spacing.sm}px ${spacing.lg}px`,
+  borderRadius: radius.md,
+  border: 'none',
+  background: color.navy,
+  color: color.textInverse,
+  fontSize: font.size.sm,
+  cursor: 'pointer',
 };
 
 const errorBoxStyle: React.CSSProperties = {
