@@ -49,6 +49,43 @@ const invitationId = typeof body.invitation_id === 'string' ? body.invitation_id
 
 const supabaseAdmin = createSupabaseAdminClient();
 
+// Identity-match hardening (Stage 2.4). Authoritative invitation lookup
+// via the service-role client -- never trust anything the browser claims
+// about the invitation. Compared against the server-verified session
+// user's own email (never a client-supplied email). Both sides trimmed
+// and lowercased before comparison.
+const { data: invitationRow, error: invitationLookupError } = await supabaseAdmin
+  .from('account_invitations')
+  .select('canonical_email')
+  .eq('id', invitationId)
+  .maybeSingle();
+
+if (invitationLookupError) {
+  console.error(`[invitation/finalize] invitation lookup failed for ${invitationId}:`, invitationLookupError.message);
+  return NextResponse.json(invitationError('INTERNAL_ERROR', 'Something went wrong. Please try again.'), {
+    status: invitationErrorStatus('INTERNAL_ERROR'),
+  });
+}
+
+if (!invitationRow) {
+  return NextResponse.json(invitationError('INVITATION_NOT_FOUND', 'Invitation not found.'), {
+    status: invitationErrorStatus('INVITATION_NOT_FOUND'),
+  });
+}
+
+const authoritativeEmail = typeof invitationRow.canonical_email === 'string' ? invitationRow.canonical_email.trim().toLowerCase() : '';
+const sessionEmail = typeof user.email === 'string' ? user.email.trim().toLowerCase() : '';
+
+if (!authoritativeEmail || !sessionEmail || authoritativeEmail !== sessionEmail) {
+  console.error(
+    `[invitation/finalize] identity mismatch on invitation ${invitationId} for user ${user.id} -- finalize refused`
+  );
+  return NextResponse.json(
+    { error: { code: 'INVITATION_IDENTITY_MISMATCH', message: "This invitation doesn't match your account." } },
+    { status: 409 }
+  );
+}
+
 const { data: finalizeResult, error: finalizeError } = await supabaseAdmin.rpc('finalize_account_invitation', {
   p_invitation_id: invitationId,
   p_auth_user_id: user.id,
