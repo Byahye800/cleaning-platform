@@ -31,11 +31,25 @@ export default function AdminLoginPage() {
   const [resetNotice, setResetNotice] = useState<string | null>(null);
   const [resetSuccess, setResetSuccess] = useState(false);
 
-  useEffect(() => {
+useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get('reset') === 'success') setResetSuccess(true); if (params.get('error') === 'account_disabled') setError('Your account is not active. Contact your administrator.');
-  }, []);
+    if (params.get('reset') === 'success') setResetSuccess(true);
+
+    // Stage 2.3 -- proxy.ts's lifecycle routing (src/proxy.ts) attaches one
+    // of these three error codes when it signs a user out. Preserve
+    // account_disabled exactly as before; account_suspended and
+    // account_configuration are new in Stage 2.3. Wording is deliberately
+    // generic -- no internal database/lifecycle detail is exposed here.
+    const errorParam = params.get('error');
+    if (errorParam === 'account_disabled') {
+          setError('Your account is not active. Contact your administrator.');
+    } else if (errorParam === 'account_suspended') {
+          setError('Your account is temporarily suspended. Please contact your administrator.');
+    } else if (errorParam === 'account_configuration') {
+          setError('We could not verify your account access. Please contact your administrator.');
+    }
+}, []);
 
   useEffect(() => {
     (async () => {
