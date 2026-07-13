@@ -3,6 +3,18 @@
 ## Current State (as of 2026-07-07)
 Live app running on Hostinger VPS at http://187.124.112.253:3002, PM2-managed, deployed via git pull from GitHub (Byahye800/cleaning-platform). Claude Code installed on VPS for direct development. No domain/HTTPS yet — pending.
 
+## Staging Environment Build-Out (as of 2026-07-13)
+
+**Separate track from the Stage 2 application-feature track below** — this is infrastructure work against a brand-new, fully isolated Supabase project (`jwdfzgibrijcyypibhjw`, "Cleaning Platform - Staging", `eu-central-1`, Free plan), not the production database (`wqdyshgoxtkbreijbbha`).
+
+**Completed**: Checkpoint 1 (readiness), Checkpoint 2 (project creation), Checkpoint 3 Remediation (staging reset to empty, then bootstrapped via migrations `0005` through `0027` — the repository's documented authoritative fresh-bootstrap path — with a full structural/security verification battery passed: 19 tables, 4 views, 23 functions with correct ownership, 7 triggers, RLS on every table, no dangerous policies, zero data, zero Auth users).
+
+**Key finding**: a literal full-history migration replay (`0001`→`0003`→`0005`) fails on a fresh database — a genuine repository governance defect, tracked as `KNOWN-ISSUES-REGISTER.md`'s `STAGING-001`, not yet fixed. The fresh-bootstrap path (`0005`→`0027`, skipping `0001`–`0003`) is proven to work and is what staging now runs on.
+
+**Not started**: Checkpoint 4 (staging Auth), Checkpoint 5 (staging SMTP), Checkpoint 6 (Vercel staging deploy), Checkpoint 7 (integrity audit), Checkpoint 8 (Stage 2.5 live E2E testing).
+
+**Full detail**: `STAGING-CHECKPOINT-HISTORY.md`, `STAGING-RECOVERY-STATE.md`, `NEXT-SESSION-HANDOVER.md`.
+
 ## Stage 2 -- Account Onboarding/Invitation Lifecycle (as of 2026-07-12)
 
 **Phase**: Stage 2 (account onboarding/invitation lifecycle) is part of "Prereq A," which blocks Sites UI wiring, Shift lifecycle groundwork, Phase 6 (Contracts/Schedules/Recurrence), and Phase 7 (Client reporting) until it is fully complete end-to-end.

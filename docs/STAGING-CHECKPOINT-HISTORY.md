@@ -1,0 +1,79 @@
+# STAGING-CHECKPOINT-HISTORY.md
+
+**Purpose:** the authoritative record of every staging-environment checkpoint, its outcome, and its evidence. Update this file at the end of every checkpoint — do not delete or rewrite completed entries, only append.
+
+---
+
+## CHECKPOINT 1 — Pre-creation readiness
+
+**Status:** PASSED
+**Date:** 2026-07-13
+**Outcome:** Confirmed readiness to create an isolated staging Supabase project: exactly one organization on the account ("Byahye800's Org"), production project (`wqdyshgoxtkbreijbbha`) identified and left untouched, region/plan strategy agreed (match production's `eu-central-1`, Free plan), password-handling method agreed (Supabase's own generator, never viewed in plaintext).
+**Evidence Summary:** Pre-creation readiness report produced and approved before any project-creation action was taken.
+
+---
+
+## CHECKPOINT 2 — Staging Supabase project creation
+
+**Status:** PASSED
+**Date:** 2026-07-13
+**Outcome:** One new, isolated Supabase project created — "Cleaning Platform - Staging", ref `jwdfzgibrijcyypibhjw`, region `eu-central-1` (Frankfurt), Free plan, Nano compute (matches production's tier). Password generated via Supabase's own "Generate a password" link, never displayed in plaintext, never typed or pasted by the operator.
+**Evidence Summary:** 15-item post-creation verification passed (name/ref/org/region/plan/health confirmed; zero tables, zero migrations, zero Auth users, default Auth Site URL, no redirect URLs, no custom SMTP, no Vercel link; production project confirmed unchanged throughout). One honestly-flagged discrepancy: the Users page footer showed a stale "Total: 10 users (estimated)" UI widget against an otherwise-empty Users table — later independently re-confirmed via direct `select count(*) from auth.users` returning 0, resolving the discrepancy as a stale UI cache artifact, not real data. Full detail in `CHECKPOINT-2-STAGING-SUPABASE-CREATION-REPORT.md`.
+
+---
+
+## CHECKPOINT 3 — Apply and verify all database migrations (original attempt)
+
+**Status:** FAILED
+
+**Root Cause:** Migration `0003` (superseded historical file) creates a policy, `recurrence_rules_select_for_own_client_jobs`, whose `USING` expression depends on `jobs.recurrence_rule_id`. Migration `0005_schema_catchup.sql` — the repository's documented "authoritative baseline" migration — attempts `alter table public.jobs drop column if exists recurrence_rule_id;` without first dropping that dependent 0003-era policy.
+
+**Migration:** `0005_schema_catchup.sql`
+
+**Error:** Postgres `2BP01` — "cannot drop column recurrence_rule_id of table jobs because other objects depend on it" (the dependent object being the `recurrence_rules_select_for_own_client_jobs` policy).
+
+**Outcome:** Failure correctly detected and stopped immediately per the standing Failure Rule: no `CASCADE`, no manual patch, no retry, no continuing from the partially-applied schema. Migrations `0001`–`0003` had applied successfully immediately before this; the transaction for `0005` rolled back completely on error (confirmed via direct post-failure inspection of `information_schema`/`pg_policies` — zero partial state left behind by `0005` itself). Full failure report produced with root-cause analysis and three unexecuted remediation options, then execution stopped to await user decision. Full detail in `CHECKPOINT-3-STAGING-DATABASE-MIGRATION-AND-STRUCTURAL-VERIFICATION-REPORT.md`.
+
+---
+
+## CHECKPOINT 3 REMEDIATION — Reset staging and use the authoritative fresh-bootstrap path
+
+**Status:** PASSED
+**Date:** 2026-07-13
+
+**Outcome:** Per approved remediation, staging's public schema was reset to a clean empty state (all 10 known 0003-era policies dropped by name, then all 5 application tables dropped in dependency order — `jobs` first — with zero `CASCADE` usage and zero migration-file edits), then the authoritative fresh-bootstrap sequence was applied: migrations `0005` through `0027` (23 files), in exact order, explicitly excluding `0001`–`0003` as superseded historical files not part of the fresh-environment bootstrap path. All 23 migrations succeeded with zero failures.
+
+**Security verification passed:** exactly 19 tables and 4 views (matching the expected schema exactly); exactly 23 functions with correct ownership — critically, `accept_account_invitation(uuid)` is owned by `service_role` (required for its internal `guard_invitation_status_write()` check to pass, since `SET ROLE` is disallowed inside `SECURITY DEFINER` bodies) while all 22 other functions are owned by `postgres`; exactly 7 triggers, matching expected; row-level security enabled on every table with zero exceptions; no dangerous unconditional-access policies found (the only two `null`-qualifier policies found are legitimate `INSERT`-only policies with proper `WITH CHECK` clauses); all 4 views correctly run with `security_invoker=true`; zero residual data across every application table; zero Auth users. The two stale, problem-specific 0001/0003-era policy names (`jobs_select_for_own_client`, `recurrence_rules_select_for_own_client_jobs`) were confirmed absent — `jobs_select_for_own_cleaner` is present but was verified to be created by `0005` itself as the sole, current, non-duplicated version, not a leftover from a skipped `0001`/`0003` run.
+
+**Production untouched:** confirmed no browser tool call in this remediation ever navigated to, queried, or modified project ref `wqdyshgoxtkbreijbbha` at any point.
+
+**Explicitly and honestly disclosed as still open, not fixed by this remediation:** the `0001 → 0003 → 0005` literal historical replay defect (Checkpoint 3's root cause, above) remains broken. This remediation proved the narrower, different claim that the documented fresh-bootstrap path (`0005 → 0027`) works — it did not repair migration history. See `KNOWN-ISSUES-REGISTER.md`, issue `STAGING-001`.
+
+Full detail in `CHECKPOINT-3-REMEDIATION-STAGING-DATABASE-BOOTSTRAP-AND-VERIFICATION-REPORT.md`.
+
+---
+
+## CHECKPOINT 4 — Staging Auth configuration
+
+**Status:** Not started
+**Date:** —
+**Outcome:** —
+**Evidence Summary:** —
+
+---
+
+## CHECKPOINT 5 — Staging custom SMTP (Resend)
+
+**Status:** Not started
+
+## CHECKPOINT 6 — Vercel staging deployment
+
+**Status:** Not started
+
+## CHECKPOINT 7 — Staging environment integrity audit
+
+**Status:** Not started
+
+## CHECKPOINT 8 — Stage 2.5 execution (post-staging live E2E testing)
+
+**Status:** Not started — test plan must be re-presented and approved before any test execution begins, per standing instruction.
