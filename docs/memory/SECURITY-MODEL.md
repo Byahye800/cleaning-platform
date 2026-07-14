@@ -58,6 +58,8 @@ The staging Supabase project (`jwdfzgibrijcyypibhjw`, "Cleaning Platform - Stagi
 
 Secrets for staging (DB password, anon key, service-role key) follow the same rule as production: environment-scoped only, never committed, never printed in chat/logs/reports. `STAGING-RECOVERY-STATE.md` records staging's state without any secret material, by design.
 
+**Checkpoint 4 Part A (2026-07-14):** staging Auth hardened with two domain-independent changes, both aligned with the repository's own design: public signup ("Allow new users to sign up") disabled — the app has no code path anywhere in `src/` that calls `.signUp(`, so this closes an Auth-API-level account-creation path the application never used; minimum password length raised from Supabase's default 6 to 8, matching the 8-character minimum already enforced client-side in `reset-password/page.tsx`, closing a gap where a password 6-7 characters long could previously be set via direct Auth-API calls bypassing the app's own form. Provider states independently re-verified with certainty (Email enabled; Phone, SAML 2.0, Web3 Wallet, and all OAuth providers disabled; no custom providers) before any change was made. URL-dependent Auth configuration (Site URL, Redirect URLs) remains deferred pending Checkpoint 6.
+
 ## Standing rule for any new sensitive route
 
 `requireSession()` or `requireAdmin()` first, then `createSupabaseAdminClient()` (service-role, bypasses RLS deliberately and explicitly) to re-derive all lifecycle-relevant state server-side. Never mix "trust RLS" and "trust the service-role client's caller" — the service-role client trusts nothing by default; the route's own logic is what must enforce authorization.
