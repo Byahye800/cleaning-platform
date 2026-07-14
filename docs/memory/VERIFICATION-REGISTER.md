@@ -90,3 +90,25 @@ The four files below were listed here through 2026-07-13 as "designed/implemente
 **Prevention measure:** Before every browser write action, capture a fresh screenshot, visually identify the current target, and avoid coordinate reuse from previous page states.
 
 **Sequencing note (separate from this incident):** this Vercel project-creation work falls under Checkpoint 6 ("Vercel staging deployment") per `STAGING-CHECKPOINT-HISTORY.md`, performed ahead of Checkpoint 4 ("Staging Auth configuration"), which remains not started. No formal sequencing exception was recorded in `STAGING-CHECKPOINT-HISTORY.md` prior to this work beginning; this entry constitutes that record after the fact, pending the owner's confirmation of the exception.
+
+## Checkpoint 6 planning note — corrected environment-variable requirements (2026-07-14)
+
+Recorded during a documentation-only reconciliation pass, based on real build evidence from the incident above (not repeated/re-tested here).
+
+**Precise status:** Checkpoint 6 pre-configuration artifact exists under a documented limited sequencing exception (`docs/STAGING-CHECKPOINT-HISTORY.md`, "SEQUENCING EXCEPTION"). Checkpoint 6 implementation remains not started.
+
+**Corrected finding:** the earlier assumption that only the three Supabase variables would be sufficient for a first successful Vercel build was disproved by the incident's build logs.
+
+| Variable | Requirement level |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Required for core Supabase operation |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Required for core Supabase operation |
+| `SUPABASE_SERVICE_ROLE_KEY` | Required for core Supabase operation |
+| `STRIPE_SECRET_KEY` | **Proven required for the repository's current Vercel build path** — its absence caused the incident's build failure during page-data collection |
+| `NEXT_PUBLIC_APP_URL` | Required only after a real staging URL exists, for correct invitation-link generation — not required for the build itself (confirmed: referenced only inside two Node-runtime API route handlers, evaluated at request time) |
+| `STRIPE_WEBHOOK_SECRET` | Feature-specific / later |
+| `INTERNAL_CRON_SECRET` | Feature-specific / later |
+| `ALLOW_DEV_INVITE_LINK_DISPLAY` | Optional, default-off, safe to leave unset |
+| `RESEND_API_KEY`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` | Currently unreferenced by any code path (placeholders in `.env.example` only) |
+
+**Standing requirement for Checkpoint 6:** a verified Stripe **test-mode** strategy (test-mode secret key, never a production Stripe secret) must be established before the next deployment attempt. No variable has been added to Vercel as part of this note or this reconciliation — planning documentation only.
