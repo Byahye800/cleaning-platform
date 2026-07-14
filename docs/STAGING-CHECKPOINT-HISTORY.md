@@ -78,10 +78,21 @@ During that work, a stale browser coordinate caused the Deploy button to be sele
 
 ## CHECKPOINT 4 — Staging Auth configuration
 
-**Status:** Not started
-**Date:** —
-**Outcome:** —
-**Evidence Summary:** —
+**Checkpoint 4 Part A — domain-independent Auth hardening: PASSED.**
+**Checkpoint 4 Part B — URL-dependent Auth configuration: DEFERRED pending a working staging deployment.**
+**Checkpoint 4 overall: PARTIALLY COMPLETE.**
+
+**Date:** 2026-07-14
+
+**Outcome (Part A):** Following the read-only Checkpoint 4 pre-implementation investigation, the owner approved exactly two staging Auth changes, both domain-independent (no dependency on Checkpoint 5 SMTP or Checkpoint 6 Vercel/URL): (1) "Allow new users to sign up" changed from ON to OFF, matching the repository's invitation-only design (zero code path in `src/` calls `.signUp(`); (2) minimum password length raised from 6 to 8 characters, aligning server-side enforcement with the client-side 8-character minimum already enforced in `reset-password/page.tsx`. Both changes were verified pre-change and post-change via fresh dashboard screenshots on the confirmed staging project (`jwdfzgibrijcyypibhjw`, "Cleaning Platform - Staging"); no adjacent setting (manual linking, anonymous sign-in, confirm email, provider states, OTP settings, leaked-password protection, password character-class rule) changed. No provider was found in an unexpected state — Email enabled; Phone, SAML 2.0, Web3 Wallet, and all OAuth providers confirmed Disabled with certainty via full page-text extraction, not just visual sampling.
+
+**Outcome (Part B, deferred):** Site URL and Redirect URLs remain unset (`http://localhost:3000` default; empty allow-list) because no real, working staging deployment URL exists yet — Checkpoint 6 (Vercel) has not produced one. Custom SMTP and email-template configuration remain deferred pending Checkpoint 5 (Resend). No placeholder or the failed/unconfigured Vercel deployment URL was used as a stand-in, per explicit instruction.
+
+**Confirmed unchanged after Part A:** Site URL, Redirect URLs, custom SMTP, email templates, CAPTCHA, secure password change, require-current-password, leaked-password protection, session settings, refresh-token configuration, rate limits — all independently re-verified via fresh dashboard pages after the two approved changes were saved.
+
+**Production:** not touched at any point. Repository code and migrations: not touched.
+
+**Evidence Summary:** Full pre-implementation investigation report (read-only) plus this implementation's own pre-change/save-safety/post-change verification, evidenced by dashboard screenshots and full page-text extraction. No commit references any secret value.
 
 ---
 

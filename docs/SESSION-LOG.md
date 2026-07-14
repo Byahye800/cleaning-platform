@@ -1,6 +1,20 @@
 # Session Log
 
 Running dated log of work sessions on this codebase. Newest entries at the top.
+## 2026-07-14 — Checkpoint 4 Part A: staging Auth hardening (public signup disabled, minimum password length raised)
+
+**Scope note:** staging-infrastructure track, continuing directly from the read-only Checkpoint 4 pre-implementation investigation earlier the same day. Only the two owner-approved, domain-independent Auth settings were changed; no other Auth/URL/SMTP/template/provider/session/infrastructure/repository/database/deployment/production change was made.
+
+- **Pre-implementation verification:** fresh authenticated clone confirmed local HEAD equals remote `origin/main` HEAD (`741bd53515bb3c3e867df4ae286f263de92e2cfa`), working tree clean, zero untracked files, latest migration still `0028`. No drift from the verified baseline. Staging project identity visually reconfirmed (`Cleaning Platform - Staging`, `jwdfzgibrijcyypibhjw`) via Settings → General before any Auth page was opened.
+- **Provider verification gate:** full page-text extraction of the Sign In/Providers page confirmed, with certainty, Email = Enabled and every other provider — Phone, SAML 2.0, Web3 Wallet, and all 20 listed OAuth providers — Disabled, with zero custom providers configured. Nothing unexpected was found, so no provider was touched.
+- **Change 1 — disable public signup:** "Allow new users to sign up" toggled ON → OFF. Save-safety gate performed immediately before saving (fresh screenshot compared against the pre-change baseline: manual linking, anonymous sign-ins, and confirm email all confirmed unchanged). Saved; dashboard confirmed "Successfully updated settings."
+- **Change 2 — raise minimum password length:** value changed 6 → 8 in the Email provider panel. Save-safety gate performed (leaked-password prevention, password character-class requirement, OTP expiration, and OTP length all confirmed unchanged before saving, matching instruction not to add a character-class rule). Saved successfully; value independently re-verified as persisted by reopening the panel after navigating away.
+- **Post-change verification:** re-confirmed, via fresh page loads, that both target settings hold their new values and that every other setting explicitly listed as not-to-touch remains unchanged — Site URL (`http://localhost:3000`), Redirect URLs (empty), custom SMTP (off), CAPTCHA (off), leaked-password prevention (disabled/Pro-gated), and all rate limits (2 emails/h, 30 SMS/h, 150 token-refresh/5min, 30 token-verification/5min, 30 anonymous/h) — no unintended drift found.
+- **Deferred (unauthorised this task):** URL-dependent Auth configuration (Site URL, Redirect URLs) — depends on Checkpoint 6 producing a working deployment URL; SMTP and email-template configuration — depends on Checkpoint 5. No public-signup test, invitation test, or password-recovery test was performed, per instruction — those belong to later approved checkpoints.
+- **Production:** not touched at any point. **Checkpoint 4 overall: PARTIALLY COMPLETE** — Part A (domain-independent hardening) PASSED; Part B (URL-dependent configuration) DEFERRED.
+- **Deliverables:** `docs/STAGING-CHECKPOINT-HISTORY.md`, `docs/NEXT-SESSION-HANDOVER.md`, `docs/memory/ACTIVE-WORK.md`, `docs/memory/CURRENT-STATE.md`, `docs/memory/SECURITY-MODEL.md`, `docs/memory/VERIFICATION-REGISTER.md`.
+- **Next when we resume:** Checkpoint 4 Part B, once Checkpoint 6 exists — or Checkpoint 5/6 directly, per owner decision. Requires explicit approval before beginning.
+
 ## 2026-07-14 — Vercel staging pre-configuration artifact created; accidental deployment incident recorded and reconciled
 
 **Scope note:** staging-infrastructure track, continuing from the Pre-Checkpoint-4 closure entry below. No Checkpoint 4 (staging Auth) or Checkpoint 6 (Vercel staging deployment) implementation work was performed — both remain explicitly out of scope.

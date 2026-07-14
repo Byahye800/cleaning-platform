@@ -10,7 +10,7 @@
 
 ## Current status
 
-A brand-new, fully isolated staging Supabase project has been created and its database schema has been successfully bootstrapped and verified. **No Auth or SMTP configuration has been done for staging yet.** A Vercel project (`cleaning-platform-staging`, team "Facility Pro Management Maintenance") exists as a limited, documented pre-configuration artifact created ahead of sequence — see "Vercel pre-configuration artifact" below — but Checkpoint 6 (full Vercel staging deployment) has not started, no environment variables are attached, and no working staging deployment of the application exists yet. Production is completely untouched by any of this work.
+A brand-new, fully isolated staging Supabase project has been created and its database schema has been successfully bootstrapped and verified. **Checkpoint 4 (staging Auth) is partially complete:** two domain-independent Auth hardening changes are done (public signup disabled; minimum password length raised to 8) — see "Checkpoint 4 Part A" below. URL-dependent Auth configuration (Site URL, Redirect URLs) and SMTP/template configuration remain deferred pending Checkpoints 6 and 5 respectively. A Vercel project (`cleaning-platform-staging`, team "Facility Pro Management Maintenance") exists as a limited, documented pre-configuration artifact created ahead of sequence — see "Vercel pre-configuration artifact" below — but Checkpoint 6 (full Vercel staging deployment) has not started, no environment variables are attached, and no working staging deployment of the application exists yet. Production is completely untouched by any of this work.
 
 ## Completed checkpoints
 
@@ -21,7 +21,7 @@ A brand-new, fully isolated staging Supabase project has been created and its da
 
 ## Outstanding checkpoints
 
-- **Checkpoint 4 — Staging Auth Configuration.** Not started. This is the next approved task (see below) — but it is **not started**, and this handover does not authorize starting it; that requires the user's explicit go-ahead in a new session.
+- **Checkpoint 4 — Staging Auth Configuration.** **Partially complete.** Part A (domain-independent hardening: public signup disabled, minimum password length raised to 8) is done and verified. Part B (Site URL, Redirect URLs — both depend on a working Checkpoint 6 deployment) remains deferred. Do not resume Checkpoint 4 Part B without the user's explicit go-ahead in a new session.
 - **Checkpoint 5** — staging custom SMTP (Resend). Not started.
 - **Checkpoint 6** — Vercel staging deployment. Not started (implementation). A limited pre-configuration artifact (one Vercel project, one failed/unconfigured deployment attempt) exists under a documented sequencing exception — see "Vercel pre-configuration artifact" below. This is not Checkpoint 6 having started.
 - **Checkpoint 7** — staging environment integrity audit. Not started.
@@ -68,11 +68,12 @@ A Vercel project, `cleaning-platform-staging` (team "Facility Pro Management Mai
 - Zero residual data, zero Auth users in staging (Checkpoint 3 Remediation, Sections 13–14).
 - Production non-impact throughout every checkpoint (verified by construction — no tool call in any checkpoint ever targeted the production project ref).
 - **As of 2026-07-14:** the four checkpoint evidence reports (`CHECKPOINT-1-READINESS-REPORT.md`, `CHECKPOINT-2-STAGING-SUPABASE-CREATION-REPORT.md`, `CHECKPOINT-3-STAGING-DATABASE-MIGRATION-AND-STRUCTURAL-VERIFICATION-REPORT.md`, `CHECKPOINT-3-REMEDIATION-STAGING-DATABASE-BOOTSTRAP-AND-VERIFICATION-REPORT.md`) — previously cited by name in committed docs but never actually committed to the repo — are now present in `docs/`, confirmed authentic (originals, not reconstructed) and scanned for secrets before commit.
+- **As of 2026-07-14:** Checkpoint 4 Part A — staging Auth "Allow new users to sign up" = OFF and minimum password length = 8 — both saved successfully on the confirmed staging project and independently re-verified post-save via fresh page loads; every adjacent Auth/URL/SMTP/rate-limit/session setting confirmed unchanged.
 
 ## What remains unverified
 
 - Any functional/behavioral correctness of staging (no RPCs have been called, no rows have been inserted, no real invite/onboarding/attendance/checklist/issue flow has been exercised against staging).
-- Staging Auth and SMTP configuration — none of it exists yet, so there's nothing to verify.
+- Staging Auth URL-dependent configuration (Site URL, Redirect URLs) and SMTP/template configuration — none of it exists yet, so there's nothing to verify. (Domain-independent Auth hardening — public signup, minimum password length — is done; see Checkpoint 4 Part A above.)
 - Staging Vercel configuration beyond the bare project shell described above — no environment variables, no successful build, no working deployment exists yet.
 - Whether the application code itself (as deployed to production) would work correctly if pointed at staging — untested.
 
@@ -80,6 +81,6 @@ A Vercel project, `cleaning-platform-staging` (team "Facility Pro Management Mai
 
 ## NEXT ACTION
 
-**NEXT APPROVED TASK: Checkpoint 4 — Staging Auth Configuration.**
+**NEXT APPROVED TASK: Checkpoint 4 Part B — URL-dependent staging Auth configuration (Site URL, Redirect URLs), once Checkpoint 6 produces a working staging deployment URL.**
 
-**Not started.**
+**Checkpoint 4 Part A is done. Part B is deferred, not started.**
