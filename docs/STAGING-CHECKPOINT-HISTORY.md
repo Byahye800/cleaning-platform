@@ -64,6 +64,18 @@ STAGING-002 (inconsistent EXECUTE grants on the two BEFORE-trigger-only function
 
 ---
 
+## SEQUENCING EXCEPTION — Vercel project pre-configuration artifact (2026-07-14, not a numbered checkpoint)
+
+**Status:** Limited exception, documented after the fact. Checkpoint 6 implementation itself remains NOT STARTED.
+
+**Outcome:** Ahead of the normal checkpoint sequence (Checkpoint 4 had not yet started), the owner authorised a narrow, limited step: verify that no Vercel project existed, then create a new Vercel project (`cleaning-platform-staging`, team "Facility Pro Management Maintenance") from `Byahye800/cleaning-platform`, with environment-variable configuration and deployment explicitly withheld pending later approval. This was authorised only as a basic import/setup step, not as authorisation to begin Checkpoint 6 in full.
+
+During that work, a stale browser coordinate caused the Deploy button to be selected unintentionally while the operator was attempting to prepare environment-variable fields, before any variable was entered. The resulting deployment (`dpl_EvxiYCSNQ2c6fB9L3jeLWBKuXMR5`, commit `4fe3415`) failed safely during Next.js's page-data-collection step (Stripe SDK missing `STRIPE_SECRET_KEY`) — dependency install, compilation, and TypeScript checking had all already succeeded. Zero routes were ever served, zero environment variables (including all Supabase values) were ever attached, no custom domain was connected, and no third-party integration was activated. Full incident detail, evidence, and recovery plan: `docs/memory/VERIFICATION-REGISTER.md`, "INCIDENT — Unauthorized Vercel deployment triggered during import."
+
+**Precise status:** Checkpoint 6 pre-configuration artifact exists under a documented limited sequencing exception. Checkpoint 6 implementation remains not started. No further Checkpoint 6 work is authorised at this time. The normal checkpoint sequence resumes at Checkpoint 4.
+
+---
+
 ## CHECKPOINT 4 — Staging Auth configuration
 
 **Status:** Not started
@@ -79,7 +91,7 @@ STAGING-002 (inconsistent EXECUTE grants on the two BEFORE-trigger-only function
 
 ## CHECKPOINT 6 — Vercel staging deployment
 
-**Status:** Not started
+**Status:** Not started (implementation). A limited pre-configuration artifact — one Vercel project and one failed, unconfigured deployment attempt — exists under a documented sequencing exception; see "SEQUENCING EXCEPTION" above. This does not constitute Checkpoint 6 having started.
 
 ## CHECKPOINT 7 — Staging environment integrity audit
 

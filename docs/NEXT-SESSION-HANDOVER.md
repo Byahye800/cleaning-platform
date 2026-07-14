@@ -10,7 +10,7 @@
 
 ## Current status
 
-A brand-new, fully isolated staging Supabase project has been created and its database schema has been successfully bootstrapped and verified. **No Auth, SMTP, or Vercel configuration has been done for staging yet.** No staging deployment of the application exists yet. Production is completely untouched by any of this work.
+A brand-new, fully isolated staging Supabase project has been created and its database schema has been successfully bootstrapped and verified. **No Auth or SMTP configuration has been done for staging yet.** A Vercel project (`cleaning-platform-staging`, team "Facility Pro Management Maintenance") exists as a limited, documented pre-configuration artifact created ahead of sequence — see "Vercel pre-configuration artifact" below — but Checkpoint 6 (full Vercel staging deployment) has not started, no environment variables are attached, and no working staging deployment of the application exists yet. Production is completely untouched by any of this work.
 
 ## Completed checkpoints
 
@@ -23,7 +23,7 @@ A brand-new, fully isolated staging Supabase project has been created and its da
 
 - **Checkpoint 4 — Staging Auth Configuration.** Not started. This is the next approved task (see below) — but it is **not started**, and this handover does not authorize starting it; that requires the user's explicit go-ahead in a new session.
 - **Checkpoint 5** — staging custom SMTP (Resend). Not started.
-- **Checkpoint 6** — Vercel staging deployment. Not started.
+- **Checkpoint 6** — Vercel staging deployment. Not started (implementation). A limited pre-configuration artifact (one Vercel project, one failed/unconfigured deployment attempt) exists under a documented sequencing exception — see "Vercel pre-configuration artifact" below. This is not Checkpoint 6 having started.
 - **Checkpoint 7** — staging environment integrity audit. Not started.
 - **Checkpoint 8** — Stage 2.5 execution (live E2E testing of the account-invitation/onboarding flow), to happen only after staging is fully built out. Not started. The test plan itself must be re-presented and re-approved before any test execution begins — this was an explicit standing instruction from earlier in the engagement, carried forward.
 
@@ -40,6 +40,12 @@ See `STAGING-RECOVERY-STATE.md` for the full field-by-field snapshot (project re
 
 - **`STAGING-001` — Historical Migration Replay Defect. Still OPEN.** Running migrations `0001` → `0002` → `0003` → `0005` in that literal order against a fresh database fails at `0005` (Postgres error `2BP01`, a policy from `0003` depends on a column `0005` tries to drop). This is a real repository governance issue, not fixed by anything done so far — the Checkpoint 3 Remediation worked *around* it (by starting the bootstrap at `0005` instead) rather than fixing it, and a 2026-07-14 Pre-Checkpoint-4 closure task explicitly excluded it from resolution by owner decision. Full detail and two candidate fix directions (neither approved yet) are in `KNOWN-ISSUES-REGISTER.md`. **Do not edit `0001`/`0003`/`0005` without separate explicit approval.**
 - **`STAGING-002` — RESOLVED 2026-07-14.** Was: inconsistent EXECUTE grants on two BEFORE-trigger-only functions. Fixed via migration `0028_resolve_staging_002_trigger_function_execute_grants.sql`, applied to staging only, live-verified (pre/post-change evidence, rolled-back functional trigger-path test). Full detail in `KNOWN-ISSUES-REGISTER.md`.
+
+## Vercel pre-configuration artifact (2026-07-14, ahead of Checkpoint 6)
+
+A Vercel project, `cleaning-platform-staging` (team "Facility Pro Management Maintenance", repository `Byahye800/cleaning-platform`, branch `main`, framework Next.js auto-detected, root directory `./`, build overrides left default), was created under a narrow, explicitly authorised sequencing exception — not as part of a started Checkpoint 6. During setup, a stale browser coordinate caused the Deploy button to be triggered accidentally before any environment variable was entered. The resulting deployment (`dpl_EvxiYCSNQ2c6fB9L3jeLWBKuXMR5`, commit `4fe3415`) failed safely: `npm install`, Next.js compilation, and TypeScript checking all succeeded, but the build failed during page-data collection because the Stripe SDK found no `STRIPE_SECRET_KEY`. Zero environment variables (Supabase or otherwise) were ever attached, zero routes were served, no custom domain is connected, and no integration was activated. Full detail: `docs/memory/VERIFICATION-REGISTER.md` (incident record) and `docs/STAGING-CHECKPOINT-HISTORY.md` ("SEQUENCING EXCEPTION" entry).
+
+**Corrected env-var finding for Checkpoint 6 planning:** the earlier assumption that only the three Supabase variables (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`) would be sufficient for a first successful build was disproved by this real build evidence — `STRIPE_SECRET_KEY` is also required for the build to complete, since the Stripe client is initialized in a way `next build`'s page-data-collection step evaluates. `NEXT_PUBLIC_APP_URL` is not required for the build (confirmed via code audit: only referenced inside two Node-runtime API route handlers, evaluated at request time, not build time) but is required afterward, once a real staging URL exists, for correct invitation-link generation. `STRIPE_WEBHOOK_SECRET` and `INTERNAL_CRON_SECRET` are feature-specific/later needs. `ALLOW_DEV_INVITE_LINK_DISPLAY` is optional and safe to leave unset (defaults off). `RESEND_API_KEY`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_PHONE_NUMBER` remain unreferenced by any code path. **Checkpoint 6 must establish a verified Stripe test-mode strategy (a test-mode secret key, never a production one) before the next deployment attempt.** No variable has been added to Vercel as part of this note — this is planning documentation only.
 
 ## What NOT to touch
 
@@ -66,7 +72,8 @@ See `STAGING-RECOVERY-STATE.md` for the full field-by-field snapshot (project re
 ## What remains unverified
 
 - Any functional/behavioral correctness of staging (no RPCs have been called, no rows have been inserted, no real invite/onboarding/attendance/checklist/issue flow has been exercised against staging).
-- Staging Auth, SMTP, and Vercel configuration — none of it exists yet, so there's nothing to verify.
+- Staging Auth and SMTP configuration — none of it exists yet, so there's nothing to verify.
+- Staging Vercel configuration beyond the bare project shell described above — no environment variables, no successful build, no working deployment exists yet.
 - Whether the application code itself (as deployed to production) would work correctly if pointed at staging — untested.
 
 ---
