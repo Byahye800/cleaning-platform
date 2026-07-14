@@ -60,3 +60,33 @@ The four files below were listed here through 2026-07-13 as "designed/implemente
 | Remote commit / sync verification (this closure task) | **Remote verified** | Both commits (STAGING-002 technical, documentation completion) confirmed present on `origin/main` via fresh clone; local HEAD confirmed equal to remote HEAD; working tree confirmed clean after each push. |
 
 **Explicitly not claimed here:** no functional/behavioral testing of staging beyond the narrow STAGING-002 trigger-path test above has been performed. Checkpoint 4 was not started. STAGING-001 was not touched.
+
+## INCIDENT — Unauthorized Vercel deployment triggered during import (2026-07-14)
+
+**Status:** Recorded as an implementation error. Not concealed, minimized, or rewritten.
+
+**What happened:** During initial Vercel import, a stale browser coordinate caused the Deploy button to be selected unintentionally before environment variables were configured. The operator stopped immediately. No secrets were entered or exposed. No production infrastructure was touched.
+
+**Deployment ID:** `dpl_EvxiYCSNQ2c6fB9L3jeLWBKuXMR5`
+**Commit:** `4fe3415` (branch `main`, "docs(staging): complete checkpoint evidence and recovery records (memory)")
+**Final deployment status:** Error (build failed), duration 40s.
+**Build result:** `npm install` completed (dependency installation succeeded). `next build` compiled successfully (13.1s) and TypeScript checking passed (7.6s). The build then failed during the "Collecting page data" step with `Error: Neither apiKey nor config.authenticator provided` — the Stripe Node SDK's own validation error, thrown because `STRIPE_SECRET_KEY` was not set (zero environment variables were attached to this deployment). This is a missing-configuration failure in a third-party SDK client, not a Supabase-specific failure and not a TypeScript/lint/compile defect.
+
+**Confirmed impact:**
+- One Vercel project (`cleaning-platform-staging`, team "Facility Pro Management Maintenance") was created.
+- One deployment attempt was made and failed; zero routes were ever served (build did not complete).
+- Two auto-assigned `.vercel.app` preview/production hostnames exist on the project (standard Vercel behavior for any deployment attempt, successful or not); neither served working content.
+- The GitHub connection between this Vercel project and `Byahye800/cleaning-platform` was established (a prerequisite of the import itself, not a separate action).
+
+**Confirmed non-impact:**
+- Zero environment variables were attached to the project or deployment at any point (verified directly on the Environment Variables settings page: "No Environment Variables Added").
+- No Supabase key (staging or production) was entered, displayed, copied, or logged at any point.
+- No custom domain is connected (only the two auto-assigned `.vercel.app` hostnames exist; the primary one shows "No Deployment" since the build never completed).
+- Production Supabase (`wqdyshgoxtkbreijbbha`), the live VPS, DNS, Stripe, Resend, Twilio, cron, and SMTP were not touched.
+- Project configuration matches the intended, approved values exactly: repository `Byahye800/cleaning-platform`, branch `main`, framework Next.js (auto-detected), root directory `./`, all build-command/output-directory/install-command overrides left off/default.
+
+**Recovery plan:** Leave the Vercel project and the failed deployment in place (no deletion, no cancellation — deployment already reached a final state and consumed no further resources). Resume only once environment variables are entered directly by the project owner from the verified staging Supabase project, followed by a fresh deployment.
+
+**Prevention measure:** Before every browser write action, capture a fresh screenshot, visually identify the current target, and avoid coordinate reuse from previous page states.
+
+**Sequencing note (separate from this incident):** this Vercel project-creation work falls under Checkpoint 6 ("Vercel staging deployment") per `STAGING-CHECKPOINT-HISTORY.md`, performed ahead of Checkpoint 4 ("Staging Auth configuration"), which remains not started. No formal sequencing exception was recorded in `STAGING-CHECKPOINT-HISTORY.md` prior to this work beginning; this entry constitutes that record after the fact, pending the owner's confirmation of the exception.
