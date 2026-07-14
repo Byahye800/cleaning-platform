@@ -12,6 +12,7 @@
 2. `docs/memory/CURRENT-STATE.md` (exact position)
 3. `docs/memory/ACTIVE-WORK.md` (exact next action)
 4. Skim `docs/memory/ARCHITECTURE-DECISIONS.md` and `docs/memory/SECURITY-MODEL.md` for anything relevant to the task at hand — don't re-derive decisions that are already recorded.
+5. **If the task at hand involves the staging environment** (separate track, not part of the Stage 1-2.5 app-code track above): read `docs/NEXT-SESSION-HANDOVER.md` first — written for zero prior context — then `docs/STAGING-RECOVERY-STATE.md` (exact current-state snapshot, no secrets) and `docs/STAGING-CHECKPOINT-HISTORY.md` (full checkpoint ledger). `docs/KNOWN-ISSUES-REGISTER.md` lists open staging defects (`STAGING-001`, open — do not touch without separate approval) and resolved ones (`STAGING-002`, resolved 2026-07-14). **Approved staging bootstrap route:** migrations `0005` through the current latest, on a clean database. **Broken route, do not use:** the literal `0001`→`0002`→`0003`→`0005`→... historical replay (`STAGING-001`). **Production (`wqdyshgoxtkbreijbbha`) must never be touched as part of staging work** — the two projects are fully isolated by design (`ARCHITECTURE-DECISIONS.md`, ADR-011). As of 2026-07-14, staging is schema-complete and security-verified; Checkpoint 4 (staging Auth configuration) is the next approved task and has **not** been started — do not begin it without the user's explicit go-ahead in the current session.
 
 ## Step 2 — Independently verify repository state (do not trust Step 1 alone for anything you're about to act on)
 
@@ -64,6 +65,10 @@ grep -n "onboarding_status" supabase/0024_lifecycle_dimensions.sql
 # Check line counts of the Stage 2.4 file set against CURRENT-STATE.md's table
 wc -l src/app/api/auth/invitation/status/route.ts src/app/api/onboarding/profile/route.ts src/app/api/admin/accounts/activate/route.ts src/app/api/auth/invitation/finalize/route.ts "src/app/admin/cleaners/[id]/page.tsx" "src/app/admin/clients/[id]/page.tsx" 2>/dev/null
 ```
+
+## Staging environment sync/verification (separate from the app-code repo checks above)
+
+To verify local/remote synchronization and current state for the **staging** track specifically, don't rely on the generic `git log`/`git status` commands above alone — follow `docs/STAGING-RECOVERY-STATE.md`'s own "How to recover / re-verify this state from scratch" section, which includes the exact live-database verification queries (table/view/function/trigger/RLS/policy/data counts) needed to confirm staging's Supabase project matches what's documented, not just that the repo's migration files are present.
 
 ## What this runbook does NOT cover
 

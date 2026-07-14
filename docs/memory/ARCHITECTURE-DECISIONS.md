@@ -104,3 +104,17 @@ Deliberately does not add a new error code to `src/lib/invitationErrors.ts`'s ta
 **Decision:** all commits to `origin/main` go through the GitHub web CodeMirror editor via Chrome browser automation, chunking large files (~100 lines/chunk).
 **Why:** no local `git push` credentials exist in the standard sandbox environment (confirmed repeatedly, session after session — `git push` fails with no stored credentials every time it's been tried).
 **Consequence accepted by the user:** one file per commit is often forced by the editor's own UI flow, rather than one coherent multi-file commit per stage. Standing rule: disclose this upfront each time, keep the resulting commits consecutive with clear stage-specific messages, no unrelated work interleaved.
+
+## ADR-011 — Staging is a fully isolated Supabase project, never a schema/branch within production (2026-07-13)
+
+**Decision:** the staging environment is a separate Supabase project (`jwdfzgibrijcyypibhjw`, "Cleaning Platform - Staging"), not a separate schema, branch, or environment flag inside the production project (`wqdyshgoxtkbreijbbha`).
+**Why:** guarantees no shared secrets, no shared data, and no code path that could accidentally point a staging action at production or vice versa — explicit standing instruction throughout the staging build-out track. Production must remain untouched by any staging work; this is enforced structurally (separate project, separate credentials) rather than by convention alone.
+**Status:** live. Full detail: `docs/STAGING-RECOVERY-STATE.md`, `docs/STAGING-CHECKPOINT-HISTORY.md`.
+
+## ADR-012 — Staging's proven fresh-bootstrap baseline is `0005` through the current latest migration, not `0001`
+
+**Decision:** any fresh-environment bootstrap (staging, or a hypothetical from-scratch production rebuild) should apply migrations `0005` onward, explicitly skipping `0001`–`0003`.
+**Why:** the literal full historical replay (`0001`→`0002`→`0003`→`0005`→...) is proven broken — deterministic Postgres `2BP01` failure at `0005`, root-caused to a `0003`-era policy depending on a column `0005` drops. This was discovered and proven via a real failed attempt (Checkpoint 3 original), not assumed. The `0005`→`0027`+ path was then proven to work end-to-end against a genuinely fresh database (Checkpoint 3 Remediation) — full structural and security verification passed.
+**Important distinction — do not conflate these two claims:** "the fresh-bootstrap path works" is proven. "The full historical migration chain is healthy" is **not** proven and is in fact disproven — this is tracked as an open, unresolved governance defect (`STAGING-001`, `docs/KNOWN-ISSUES-REGISTER.md`), not fixed by this ADR or by the Checkpoint 3 Remediation. No migration file has been edited to address it; two candidate fix directions are documented but neither is approved.
+**Status:** `0005`→`0027`+ path proven live on staging. `STAGING-001` remains open by explicit decision — do not edit `0001`, `0003`, or `0005` to "fix" this without separate approval.
+
