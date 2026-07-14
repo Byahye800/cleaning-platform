@@ -50,6 +50,14 @@ Every one of: view RLS bypass, account-status enforcement, trigger-function EXEC
 
 `supabase.auth.updateUser({ password })`, not the `reset-password` page's flow (that page signs out afterward, which would break onboarding continuity). No safe "password already set" signal exists in the Supabase JS client — deliberately not solved by adding a new schema column; the design makes repeating the password step harmless instead.
 
+## Staging environment (separate track from the application security model above)
+
+The staging Supabase project (`jwdfzgibrijcyypibhjw`, "Cleaning Platform - Staging") is fully isolated from production (`wqdyshgoxtkbreijbbha`) — no shared secrets, no shared data, no code path connects them. Least-privilege expectations for staging mirror production's: trigger-only functions should not carry direct client `EXECUTE` grants they don't need, matching the pattern `0022` established.
+
+**STAGING-002 (resolved 2026-07-14):** `enforce_single_role_profile` and `guard_invitation_status_write` — both BEFORE-trigger-only functions bound to `cleaners`/`clients` triggers — retained Supabase's default `anon`/`authenticated` `EXECUTE` auto-grant, inconsistent with `0022`'s pattern for the three AFTER-trigger functions. Hardened via migration `0028_resolve_staging_002_trigger_function_execute_grants.sql`: `EXECUTE` revoked from `public`, `anon`, `authenticated`; `service_role` and the function owner (`postgres`) retain `EXECUTE`, unchanged. Trigger behaviour verified preserved via a transaction-wrapped, rolled-back functional test (both triggers still fire and enforce their business rules correctly post-change). Function bodies confirmed byte-identical pre/post via `md5(pg_get_functiondef(...))`. Production was not modified. Full evidence: `KNOWN-ISSUES-REGISTER.md`, `STAGING-002`.
+
+Secrets for staging (DB password, anon key, service-role key) follow the same rule as production: environment-scoped only, never committed, never printed in chat/logs/reports. `STAGING-RECOVERY-STATE.md` records staging's state without any secret material, by design.
+
 ## Standing rule for any new sensitive route
 
 `requireSession()` or `requireAdmin()` first, then `createSupabaseAdminClient()` (service-role, bypasses RLS deliberately and explicitly) to re-derive all lifecycle-relevant state server-side. Never mix "trust RLS" and "trust the service-role client's caller" — the service-role client trusts nothing by default; the route's own logic is what must enforce authorization.

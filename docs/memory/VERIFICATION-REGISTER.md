@@ -41,4 +41,22 @@ The four files below were listed here through 2026-07-13 as "designed/implemente
 | `src/app/admin/cleaners/[id]/page.tsx` edit | Approved, structurally specified, no verbatim diff survives — rebuild | Rebuilt, commit `48b990d` |
 | `src/app/admin/clients/[id]/page.tsx` edit | Approved, structurally specified, no verbatim diff survives — rebuild | Rebuilt, commit `a75ca5b` |
 
-## Designed only, zero implement
+## Designed only, zero implementation
+
+(Note: this section header was previously cut off mid-word — "zero implement" — in the committed file. Completed here during the 2026-07-14 Pre-Checkpoint-4 closure pass; no other content was added to or removed from this pre-existing section, which had no body beneath the header in the committed file.)
+
+## Staging environment track (separate from the application-feature tiers above)
+
+| Item | Evidence tier | Evidence |
+|---|---|---|
+| Checkpoint 1 (pre-creation readiness) | **DB verified** | Org/production-project/region/plan/password-method confirmed live before any creation action. `CHECKPOINT-1-READINESS-REPORT.md` |
+| Checkpoint 2 (staging project creation) | **DB verified** | 15-item post-creation check passed live; one stale-UI-widget discrepancy honestly flagged and independently resolved via direct `count(*)` query. `CHECKPOINT-2-STAGING-SUPABASE-CREATION-REPORT.md` |
+| Checkpoint 3 original attempt | **DB verified (failure)** | Literal `0001→0002→0003→0005` replay attempted live against staging, failed deterministically at `0005` with Postgres `2BP01`; zero partial state confirmed left behind. `CHECKPOINT-3-STAGING-DATABASE-MIGRATION-AND-STRUCTURAL-VERIFICATION-REPORT.md` |
+| Checkpoint 3 Remediation | **DB verified** | Fresh-bootstrap path (`0005`→`0027`) applied live, full structural/security battery passed (19 tables, 4 views, 23 functions, 7 triggers, RLS everywhere, correct ownership/`security_invoker`, zero data/users). `CHECKPOINT-3-REMEDIATION-STAGING-DATABASE-BOOTSTRAP-AND-VERIFICATION-REPORT.md` |
+| STAGING-001 (historical replay defect) | **DB verified (open, unresolved)** | Root cause independently re-confirmed against migration source (`0001`/`0003`/`0005`) during the 2026-07-14 Pre-Checkpoint-4 audit. Remains open by explicit instruction — no migration file edited. `KNOWN-ISSUES-REGISTER.md`, `STAGING-001` |
+| STAGING-002 (trigger EXECUTE grants) | **DB verified, resolved** | Pre/post-change live evidence (signatures, owners, `md5` definition hashes, ACLs) plus a transaction-wrapped, rolled-back functional trigger-path test proving both triggers still enforce their rules correctly post-change. Migration `0028`, applied to staging only, 2026-07-14. `KNOWN-ISSUES-REGISTER.md`, `STAGING-002` |
+| Finding A (missing checkpoint evidence reports) | **Resolved, remote-verified** | The four evidence reports cited by `STAGING-CHECKPOINT-HISTORY.md`/`KNOWN-ISSUES-REGISTER.md`/`STAGING-RECOVERY-STATE.md` were confirmed authentic (originals from this session's own working files, not reconstructed) and committed to `docs/`. Remote presence confirmed via fresh clone after push. |
+| Finding B (memory/recovery coverage gap) | **Resolved** | `ARCHITECTURE-DECISIONS.md`, `RECOVERY-RUNBOOK.md`, `SECURITY-MODEL.md`, and this file (`VERIFICATION-REGISTER.md`) updated with staging-track content and cross-references, closing the gap identified in the 2026-07-14 audit. |
+| Remote commit / sync verification (this closure task) | **Remote verified** | Both commits (STAGING-002 technical, documentation completion) confirmed present on `origin/main` via fresh clone; local HEAD confirmed equal to remote HEAD; working tree confirmed clean after each push. |
+
+**Explicitly not claimed here:** no functional/behavioral testing of staging beyond the narrow STAGING-002 trigger-path test above has been performed. Checkpoint 4 was not started. STAGING-001 was not touched.
