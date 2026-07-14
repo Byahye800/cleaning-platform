@@ -53,6 +53,17 @@ Full detail in `CHECKPOINT-3-REMEDIATION-STAGING-DATABASE-BOOTSTRAP-AND-VERIFICA
 
 ---
 
+## STAGING-002 RESOLUTION — Pre-Checkpoint-4 closure (not a numbered checkpoint)
+
+**Status:** RESOLVED
+**Date:** 2026-07-14
+
+**Outcome:** Following a read-only Pre-Checkpoint-4 audit (2026-07-14) that reviewed all open staging-track defects before Checkpoint 4 began, the owner approved a narrow, controlled follow-up to close three specific items: STAGING-002 (technical fix), and two documentation-completeness findings from that audit (missing evidence reports; incomplete memory-file coverage). STAGING-001 was explicitly excluded and remains open and untouched.
+
+STAGING-002 (inconsistent EXECUTE grants on the two BEFORE-trigger-only functions `enforce_single_role_profile` and `guard_invitation_status_write`) was resolved via one new additive migration, `0028_resolve_staging_002_trigger_function_execute_grants.sql`, applied to staging only. Full pre-change/post-change evidence and functional trigger-path verification (transaction-wrapped, rolled back, zero residual data) recorded in `KNOWN-ISSUES-REGISTER.md` under `STAGING-002`. Production was not touched. Checkpoint 4 was not started as part of this work.
+
+---
+
 ## CHECKPOINT 4 — Staging Auth configuration
 
 **Status:** Not started
