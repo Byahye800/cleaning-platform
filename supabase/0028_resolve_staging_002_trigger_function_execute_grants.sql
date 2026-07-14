@@ -1,0 +1,31 @@
+-- 0028_resolve_staging_002_trigger_function_execute_grants.sql
+--
+-- Resolves STAGING-002 (docs/KNOWN-ISSUES-REGISTER.md): enforce_single_role_profile()
+-- and guard_invitation_status_write() are BEFORE-trigger-only functions (bound to
+-- trg_enforce_single_role_profile_cleaners/clients and
+-- trg_guard_invitation_status_cleaners/clients respectively) that still carry
+-- Supabase's default EXECUTE grant to anon and authenticated, unlike the three
+-- AFTER-trigger functions 0022 already hardened (generate_payroll_event,
+-- notify_admins_on_new_issue, notify_on_new_issue_comment).
+--
+-- Neither function is ever called directly by application code or as an RPC --
+-- confirmed by a full repository search (2026-07-14). Both are exclusively
+-- invoked by Postgres as trigger bodies (confirmed live: 4 BEFORE triggers
+-- across cleaners/clients, all enabled). Direct client EXECUTE privilege is
+-- not required: normal trigger execution does not depend on the invoking
+-- role's EXECUTE privilege on the trigger function itself, only on the
+-- function owner's rights and the caller's privilege on the underlying table.
+-- Revoking EXECUTE here has zero effect on trigger firing and closes an
+-- unnecessary, inconsistent grant, matching the least-privilege pattern 0022
+-- already established for the three AFTER-trigger functions.
+--
+-- Scope: this migration only revokes direct EXECUTE privilege from public,
+-- anon, and authenticated (matching 0022's exact pattern). It does not alter
+-- function bodies, owners, return types, language, security mode, triggers,
+-- tables, policies, or RLS. service_role and the function owner (postgres)
+-- retain EXECUTE, unchanged.
+--
+-- STAGING-001 (separate, unrelated issue) is untouched by this migration.
+
+revoke all on function public.enforce_single_role_profile() from public, anon, authenticated;
+revoke all on function public.guard_invitation_status_write() from public, anon, authenticated;
