@@ -6,8 +6,6 @@ import { cookies } from 'next/headers';
 import Stripe from 'stripe';
 import { createServerSupabaseClient } from '@/lib/supabaseServer';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
 export async function POST(request: NextRequest) {
     let job_id: string | undefined;
     try {
@@ -115,6 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
   try {
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
         let customerId = client.stripe_customer_id;
 
       if (!customerId) {
