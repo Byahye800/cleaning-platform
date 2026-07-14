@@ -38,8 +38,8 @@ See `STAGING-RECOVERY-STATE.md` for the full field-by-field snapshot (project re
 
 ## Known defects
 
-- **`STAGING-001` — Historical Migration Replay Defect.** Running migrations `0001` → `0002` → `0003` → `0005` in that literal order against a fresh database fails at `0005` (Postgres error `2BP01`, a policy from `0003` depends on a column `0005` tries to drop). This is a real repository governance issue, not fixed by anything done so far — the Checkpoint 3 Remediation worked *around* it (by starting the bootstrap at `0005` instead) rather than fixing it. Full detail and two candidate fix directions (neither approved yet) are in `KNOWN-ISSUES-REGISTER.md`.
-- **`STAGING-002`** — see Known risks above; full detail in `KNOWN-ISSUES-REGISTER.md`.
+- **`STAGING-001` — Historical Migration Replay Defect. Still OPEN.** Running migrations `0001` → `0002` → `0003` → `0005` in that literal order against a fresh database fails at `0005` (Postgres error `2BP01`, a policy from `0003` depends on a column `0005` tries to drop). This is a real repository governance issue, not fixed by anything done so far — the Checkpoint 3 Remediation worked *around* it (by starting the bootstrap at `0005` instead) rather than fixing it, and a 2026-07-14 Pre-Checkpoint-4 closure task explicitly excluded it from resolution by owner decision. Full detail and two candidate fix directions (neither approved yet) are in `KNOWN-ISSUES-REGISTER.md`. **Do not edit `0001`/`0003`/`0005` without separate explicit approval.**
+- **`STAGING-002` — RESOLVED 2026-07-14.** Was: inconsistent EXECUTE grants on two BEFORE-trigger-only functions. Fixed via migration `0028_resolve_staging_002_trigger_function_execute_grants.sql`, applied to staging only, live-verified (pre/post-change evidence, rolled-back functional trigger-path test). Full detail in `KNOWN-ISSUES-REGISTER.md`.
 
 ## What NOT to touch
 
@@ -61,6 +61,7 @@ See `STAGING-RECOVERY-STATE.md` for the full field-by-field snapshot (project re
 - Staging schema security correctness: RLS on every table, correct function ownership (critically `accept_account_invitation` owned by `service_role`), correct view `security_invoker`, no dangerous unconditional-access policies, no stale duplicate policies from the skipped `0001`/`0003` (Checkpoint 3 Remediation, Sections 6–15).
 - Zero residual data, zero Auth users in staging (Checkpoint 3 Remediation, Sections 13–14).
 - Production non-impact throughout every checkpoint (verified by construction — no tool call in any checkpoint ever targeted the production project ref).
+- **As of 2026-07-14:** the four checkpoint evidence reports (`CHECKPOINT-1-READINESS-REPORT.md`, `CHECKPOINT-2-STAGING-SUPABASE-CREATION-REPORT.md`, `CHECKPOINT-3-STAGING-DATABASE-MIGRATION-AND-STRUCTURAL-VERIFICATION-REPORT.md`, `CHECKPOINT-3-REMEDIATION-STAGING-DATABASE-BOOTSTRAP-AND-VERIFICATION-REPORT.md`) — previously cited by name in committed docs but never actually committed to the repo — are now present in `docs/`, confirmed authentic (originals, not reconstructed) and scanned for secrets before commit.
 
 ## What remains unverified
 
