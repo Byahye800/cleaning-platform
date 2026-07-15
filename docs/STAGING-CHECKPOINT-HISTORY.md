@@ -105,4 +105,36 @@ During that work, a stale browser coordinate caused the Deploy button to be sele
 - Vercel staging project (`cleaning-platform-staging`, team "Facility Pro Management Maintenance") environment variable **`NEXT_PUBLIC_APP_URL`** added with value `https://cleaning-platform-staging.vercel.app`, scoped to the **Production** environment only (not Preview, not Development), per explicit instruction. The two existing Supabase env vars (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) were not modified.
 - One redeploy was triggered from the Vercel dashboard ("Redeploy" of the existing Production deployment, same repository HEAD, no code change, no branch change, no commit, no push). Deployment ID `Bqdw3YzcZSJxcjYLphqN8m73jC1M`, commit `f494e6b` (branch `main`), Environment Production. **Build result:** Ready, 52s, no errors. **Runtime result:** root URL loads and redirects to `/admin/login`; the login page renders fully and correctly (branding, nav, form); browser console showed no messages (no errors, warnings, or logs) on two separate fresh loads. Vercel's own runtime logs showed only expected `session_lookup_failed` redirect-to-login entries from unauthenticated requests to various `/admin/*` paths (proxy correctly fail-closing), consistent with pre-existing bot/scanner traffic, not a new issue introduced by this change.
 - No functional auth test was performed (no login attempted, no account created, no password reset triggered, no invitation sent) — out of scope for this task.
-- Production (`wqdyshg
+- Production (`wqdyshgoxtkbreijbbha`) untouched at every step: not accessed, not queried, not modified.
+
+**Note (2026-07-15):** this line was truncated mid-sentence in the original commit (`d40a104`); completed here as part of the next documentation update rather than left broken.
+
+---
+
+## CHECKPOINT 6 PHASE B PREREQUISITE — First staging admin account bootstrap
+
+**Status: PASSED.**
+
+**Date:** 2026-07-15
+
+**Outcome:** Following the read-only "Staging Admin Bootstrap — Pre-Execution Review" (APPROVE BOOTSTRAP recommendation), the owner authorized a strictly-scoped controlled execution to create exactly one staging Auth user and one linked `user_roles` admin row, then perform login/session/logout/route-protection verification only. All work performed on the confirmed staging project (`jwdfzgibrijcyypibhjw`, "Cleaning Platform - Staging"); target identity re-confirmed via dashboard breadcrumb before every write.
+
+**Pre-execution state:** read-only count query confirmed `auth.users`, `user_roles`, `cleaners`, `clients`, `account_invitations` all at 0 rows immediately before any write (a stale Supabase dashboard "Total: 10 users (estimated)" figure was observed once and investigated — it was a transient cached estimate that resolved to "No users in your project" moments later; the ground-truth SQL count was 0 throughout and is what execution proceeded on).
+
+**Account creation:** one Auth user created via Supabase Dashboard → Authentication → Users → "Create new user" (email/password method, "Auto confirm user?" enabled), using an owner-approved staging-only test email (redacted here per instruction). The email was entered by the assistant; the password was entered directly by the owner and was never seen, typed, logged, or stored by the assistant at any point. Resulting UID verified via `select id, email, created_at from auth.users` — exactly one row, UID and email matched the dashboard-created user, no unrelated user present.
+
+**Role insert:** a single guarded `DO $$ ... $$` block wrapped in `begin`/`commit` was used, re-verifying immediately before the insert that the target Auth user existed and that `user_roles` was still empty, then performing exactly one literal insert (`insert into public.user_roles (user_id, role) values (v_user_id, 'admin')`, no `ON CONFLICT`, no dynamic SQL, no extra columns), then re-verifying the row existed with the correct `user_id`/`role` before committing — any failure at any check would have raised an exception and rolled back. The query text was visually verified against the intended query before execution. The transaction completed successfully with no exception raised.
+
+**Post-insert verification:** `auth.users` = 1, `user_roles` = 1, `cleaners` = 0, `clients` = 0, `account_invitations` = 0. A join query confirmed exact linkage: `user_roles.user_id` = `auth.users.id`, `role` = exactly `'admin'`.
+
+**Login/session/logout/route-protection tests:** the assistant navigated to `/admin/login` and entered the email only; the owner entered the password directly and submitted the form. Result: authentication succeeded, the app left `/admin/login` and reached `/admin` (dashboard rendered; no cleaner/client portal incorrectly selected). A pre-existing, unrelated data-fetch error banner ("Could not find the table 'public.job_billing' in the schema cache") was observed on the dashboard — this is a known staging schema gap unrelated to authentication or this bootstrap, not a new issue introduced here. Session persistence: page refresh kept the session valid and the dashboard rendered; navigating to `/admin/clients` succeeded without redirect (view-only, no client created or modified). Logout: clicking "Log out" ended the session and redirected to `/admin/login`. Post-logout: refreshing did not restore the session; directly navigating to `/admin/clients` redirected to `/admin/login?next=%2Fadmin%2Fclients`, confirming the protected route correctly denies the logged-out user.
+
+**Post-test scope verification:** a broader read-only count re-confirmed `auth.users` = 1, `user_roles` = 1, `cleaners` = 0, `clients` = 0, `account_invitations` = 0, `jobs` = 0, `attendance` = 0, `payroll_events` = 0, `activity_log` = 0 — no unrelated row was created by the login/session/logout tests.
+
+**Not performed (explicitly out of scope):** cleaner account creation, client account creation, invitations, onboarding testing, password-reset testing, any code/schema/RLS/trigger change. Production (`wqdyshgoxtkbreijbbha`) was never accessed.
+
+**Credential handling:** no password, token, session cookie, or secret was recorded in chat, documentation, git history, or terminal output at any point. The staging test email is redacted in this record per instruction.
+
+**Phase B readiness:** login, session, and admin route-protection testing are now possible using the bootstrapped admin account. Cleaner, client, invitation, and onboarding testing remain blocked pending further owner-approved account creation.
+
+---
