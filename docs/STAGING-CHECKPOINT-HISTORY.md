@@ -79,8 +79,8 @@ During that work, a stale browser coordinate caused the Deploy button to be sele
 ## CHECKPOINT 4 — Staging Auth configuration
 
 **Checkpoint 4 Part A — domain-independent Auth hardening: PASSED.**
-**Checkpoint 4 Part B — URL-dependent Auth configuration: DEFERRED pending a working staging deployment.**
-**Checkpoint 4 overall: PARTIALLY COMPLETE.**
+**Checkpoint 4 Part B — URL-dependent Auth configuration: PASSED (configured and verified 2026-07-15).**
+**Checkpoint 4 overall: COMPLETE.**
 
 **Date:** 2026-07-14
 
@@ -98,22 +98,11 @@ During that work, a stale browser coordinate caused the Deploy button to be sele
 
 **Evidence Summary:** Full pre-implementation investigation report (read-only) plus this implementation's own pre-change/save-safety/post-change verification, evidenced by dashboard screenshots and full page-text extraction. No commit references any secret value.
 
----
+**Part B configuration (2026-07-15, owner-approved controlled execution):** Previous blocker — no real, working staging deployment URL existed, so no safe Site URL or Redirect URL value could be entered. Blocker resolved because Checkpoint 6 Phase A (2026-07-14) had already produced one: `https://cleaning-platform-staging.vercel.app`, confirmed reachable and rendering correctly. Configuration applied, all on the confirmed staging project (`jwdfzgibrijcyypibhjw`, "Cleaning Platform - Staging"), target identity independently re-verified before every write action:
 
-## CHECKPOINT 5 — Staging custom SMTP (Resend)
-
-**Status:** Not started
-
-## CHECKPOINT 6 — Vercel staging deployment
-
-**Status:** Not started (implementation). A limited pre-configuration artifact — one Vercel project and one failed, unconfigured deployment attempt — exists under a documented sequencing exception; see "SEQUENCING EXCEPTION" above. This does not constitute Checkpoint 6 having started.
-
-**Stripe build-blocker investigation and code correction (2026-07-14, read-only investigation + one narrowly authorised code change):** A read-only investigation confirmed the recorded build failure (`Failed to collect page data for /api/stripe/send-invoice`, exact error `Neither apiKey nor config.authenticator provided`) reproduces identically on every deployment attempt since, including a docs-only commit pushed during this same session — confirming it is a persistent, environment-level failure, not tied to any specific commit's content. Root cause: `src/app/api/stripe/send-invoice/route.ts` constructed its Stripe client at module scope, which Next.js's build-time page-data-collection step evaluates for every route regardless of whether the route is ever called. The repository's own `src/app/api/stripe/webhook/route.ts` already used a lazy, handler-scope construction pattern for the identical purpose, with an explicit code comment stating this discipline exists specifically to avoid this failure mode. Following an approved design review, the same lazy pattern was applied to `send-invoice/route.ts`: the module-scope declaration was removed and replaced with a handler-scope declaration placed inside the route's existing `try` block, immediately before the first Stripe call, preserving the existing catch-and-JSON-error-response contract. This was a single-file, two-line-net change (1 insertion, 2 deletions) verified via `git diff` to touch nothing else. `npx tsc --noEmit` reported zero TypeScript errors. **No Vercel deployment was attempted, no Vercel environment variable was configured, and no Vercel or Supabase setting was changed.** By code inspection, the specific previously observed failure path (module-scope Stripe construction throwing during page-data collection) has been eliminated. Whether the build now succeeds in full, and whether any further build-time issue exists beyond this one (for example around `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY`, never yet exercised by a build that gets past this point), remains unverified — no build or deployment was run. **Checkpoint 6 remains BLOCKED and NOT STARTED as an implementation.**
-
-## CHECKPOINT 7 — Staging environment integrity audit
-
-**Status:** Not started
-
-## CHECKPOINT 8 — Stage 2.5 execution (post-staging live E2E testing)
-
-**Status:** Not started — test plan must be re-presented and approved before any test execution begins, per standing instruction.
+- Supabase Auth **Site URL** set to `https://cleaning-platform-staging.vercel.app` (previously `http://localhost:3000` default). Verified persisted via full page reload after save.
+- Supabase Auth **Redirect URLs** allow-list populated with exactly two entries, both proven by code inspection of the current repository (`admin/login/page.tsx`'s `resetPasswordForEmail` call and `invitations/invite/route.ts` / `invitations/resend/route.ts`'s `redirectTo`/`inviteUserByEmail` calls) rather than assumed: `https://cleaning-platform-staging.vercel.app/onboarding` and `https://cleaning-platform-staging.vercel.app/reset-password`. No wildcard used. No `/auth/callback` entry added — the repository has no such route; `verifyOtp`, `emailRedirectTo`, and `SITE_URL` do not appear anywhere in `src/`. Verified persisted via full page reload after save (previously empty, "No Redirect URLs").
+- Vercel staging project (`cleaning-platform-staging`, team "Facility Pro Management Maintenance") environment variable **`NEXT_PUBLIC_APP_URL`** added with value `https://cleaning-platform-staging.vercel.app`, scoped to the **Production** environment only (not Preview, not Development), per explicit instruction. The two existing Supabase env vars (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) were not modified.
+- One redeploy was triggered from the Vercel dashboard ("Redeploy" of the existing Production deployment, same repository HEAD, no code change, no branch change, no commit, no push). Deployment ID `Bqdw3YzcZSJxcjYLphqN8m73jC1M`, commit `f494e6b` (branch `main`), Environment Production. **Build result:** Ready, 52s, no errors. **Runtime result:** root URL loads and redirects to `/admin/login`; the login page renders fully and correctly (branding, nav, form); browser console showed no messages (no errors, warnings, or logs) on two separate fresh loads. Vercel's own runtime logs showed only expected `session_lookup_failed` redirect-to-login entries from unauthenticated requests to various `/admin/*` paths (proxy correctly fail-closing), consistent with pre-existing bot/scanner traffic, not a new issue introduced by this change.
+- No functional auth test was performed (no login attempted, no account created, no password reset triggered, no invitation sent) — out of scope for this task.
+- Production (`wqdyshg
