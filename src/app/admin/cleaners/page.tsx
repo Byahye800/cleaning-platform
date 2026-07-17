@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Pencil } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseClient';
+import InviteForm from '../_shared/InviteForm';
 
 type CleanerRow = {
   id: string;
@@ -199,8 +200,10 @@ export default function AdminCleanersPage() {
         </div>
       )}
 
+      <InviteForm role="cleaner" />
+
       <section style={{ padding: 14, border: '1px solid #e5e7eb', borderRadius: 12, marginBottom: 18 }}>
-        <h3 style={{ marginTop: 0 }}>Create / Edit</h3>
+        <h3 style={{ marginTop: 0 }}>Create / Edit (manual, advanced)</h3>
         <div style={gridStyle}>
           <Field label="user_id (auth.users UUID)" value={form.user_id} onChange={(v) => setForm((p: any) => ({ ...p, user_id: v }))} placeholder="UUID" />
           <Field label="name" value={form.name} onChange={(v) => setForm((p: any) => ({ ...p, name: v }))} placeholder="John Doe Cleaning" />
