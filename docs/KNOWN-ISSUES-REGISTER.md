@@ -59,3 +59,29 @@ No migration file was edited as part of the Checkpoint 3 Remediation — per exp
 **Production:** not touched. This migration was applied to staging (`jwdfzgibrijcyypibhjw`) only.
 
 **STAGING-001:** unaffected, remains Open (see above) — this resolution did not touch it.
+
+---
+
+## STAGING-003
+
+**Title:** `job_billing`/`cleaner_pay_rates` schema drift — tables existed live but were never captured in a migration file
+
+**Description:** `public.job_billing`, `public.cleaner_pay_rates`, and their shared trigger function `public.set_updated_at()` existed live in production (created during the earlier Stage 5 "deep fix" column-split hardening) but no migration file in this repository ever created them. Because staging is bootstrapped purely from committed migration files, staging never had these tables — surfacing as a "Could not find the table 'public.job_billing' in the schema cache" error on the admin dashboard.
+
+**Root Cause:** the original column-split migration was applied directly against production during Stage 5 and was never subsequently written back into a repository migration file — a documentation/capture gap, not a schema design defect.
+
+**Affected Area:** repository/migration completeness; any fresh environment bootstrap (staging, or a hypothetical fresh production rebuild) that relies solely on committed migration files.
+
+**Production Impact:** None — production already has these objects; this only affected environments bootstrapped from the repository's migrations.
+
+**Staging Impact:** Confirmed present — first observed as a "schema cache" error during the 2026-07-15 staging admin bootstrap login test (see `STAGING-CHECKPOINT-HISTORY.md`).
+
+**Status:** RESOLVED (2026-07-18)
+
+**Priority:** Medium — not a security issue, but a real repository-completeness gap affecting disaster-recovery/fresh-bootstrap confidence, same category as `STAGING-001`.
+
+**Resolution:** Resolved via migration `0029_job_billing_and_cleaner_pay_rates_schema.sql`, applied to staging (`jwdfzgibrijcyypibhjw`) on 2026-07-18. The migration captures `set_updated_at()`, `job_billing`, and `cleaner_pay_rates` using `create table if not exists`/`create or replace function`, with a fail-fast structural validation that aborts the transaction if an existing table's structure doesn't match expectations, run before any policy or trigger is touched. It also revokes the default `PUBLIC`/`anon`/`authenticated` EXECUTE grant on `set_updated_at()`, matching the `0022`/`0028` precedent. Verified via a five-pass review (original verification, supplementary verification, migration design review, adversarial review, final pre-write hardening review) plus a live structural, security, functional, and idempotency test battery on staging (60 individual checks across schema, RLS, triggers, and app/build verification). Not applied to production as part of this change — production already has these objects; applying there would require separate explicit approval.
+
+**Production:** not touched. This migration was applied to staging only.
+
+**STAGING-001:** unaffected, remains Open (see above).
