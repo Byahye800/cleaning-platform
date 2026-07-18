@@ -2,7 +2,7 @@
 
 **Purpose:** the single source of truth for "what state is the staging environment in right now," for recovery after a laptop crash, Claude context loss, VPS loss, or staging loss. **Update this file at the end of every session that changes staging state.**
 
-**Last updated:** 2026-07-13 (end of Checkpoint 3 Remediation)
+**Last updated:** 2026-07-18 (Checkpoint 4, Checkpoint 5, and Checkpoint 6 Phase A complete; Checkpoint 6 Phase B in progress)
 
 **No secrets, passwords, tokens, or connection strings are recorded in this file, by design. Retrieve those from Supabase's own dashboard/settings UI directly when needed.**
 
@@ -17,15 +17,15 @@
 | Plan | Free |
 | Compute | Nano (t3a.nano) — matches production's tier |
 | Current Status | Healthy |
-| Auth Users | 0 |
+| Auth Users | 1 (one bootstrapped staging admin account, created 2026-07-15) |
 | Operational Data | 0 (every application table confirmed empty) |
 | Schema Status | Verified — 19 tables + 4 views, matching the full expected schema exactly |
 | Security Status | Verified — RLS enabled on every table, correct function ownership (`accept_account_invitation` owned by `service_role`, all others by `postgres`), correct view `security_invoker` settings, no dangerous policies found |
-| Migration State | Migrations `0005` through `0027` applied (23 files). Migrations `0001`, `0002`, `0003` were deliberately **not** applied — treated as superseded historical files per the approved remediation. See `KNOWN-ISSUES-REGISTER.md` (`STAGING-001`) for why. |
-| Auth Configuration | Untouched / default — Site URL still the Supabase default (`http://localhost:3000`), no custom redirect URLs, no custom SMTP configured |
-| Vercel Linkage | None — no Vercel project connected to this Supabase project |
+| Migration State | Migrations `0005` through `0029` applied (25 files, including `0028` STAGING-002 fix and `0029` STAGING-003 fix). Migrations `0001`, `0002`, `0003` were deliberately **not** applied — treated as superseded historical files per the approved remediation. See `KNOWN-ISSUES-REGISTER.md` (`STAGING-001`) for why. |
+| Auth Configuration | Configured — Site URL `https://cleaning-platform-staging.vercel.app`, Redirect URLs allow-list has exactly 2 entries (`/onboarding`, `/reset-password`), custom SMTP configured via Resend's free-tier test sender (`onboarding@resend.dev` — delivery restricted to the Resend account owner's own address pending domain verification, see `KNOWN-ISSUES-REGISTER.md`) |
+| Vercel Linkage | `cleaning-platform-staging` (team "Facility Pro Management Maintenance"), live and reachable at `https://cleaning-platform-staging.vercel.app`; env var `NEXT_PUBLIC_APP_URL` set (Production scope only) alongside the Supabase vars |
 | Production Linkage | None — fully isolated from `wqdyshgoxtkbreijbbha` ("Cleaning Platform - Dev"); no shared secrets, no shared data, no code path connects them |
-| Next Approved Checkpoint | Checkpoint 4 — Staging Auth Configuration (not started) |
+| Next Approved Checkpoint | Resolve the Resend domain-verification blocker (`nic.eu.org` request pending approval), then Checkpoint 6 Phase B / Checkpoint 7 |
 
 ---
 
