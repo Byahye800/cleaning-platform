@@ -6,7 +6,7 @@ Read this file first, every session, before touching anything. It exists because
 
 FM Pro Cleaning — a live, single-tenant cleaning/facilities-management SaaS for a real UK business. One admin, a handful of cleaners, one real client today. Real Stripe payments processed live. Running on a Hostinger VPS (PM2-managed), deployed via `git pull` + `npm run build` + `pm2 restart`. No domain/HTTPS yet.
 
-Stack: Next.js, Supabase (Postgres + Auth + RLS + Storage), Stripe, `@supabase/supabase-js`. No Resend/Twilio yet (planned, not started — requires the user's own provider accounts). Repo: `github.com/Byahye800/cleaning-platform`, branch `main` only.
+Stack: Next.js, Supabase (Postgres + Auth + RLS + Storage), Stripe, `@supabase/supabase-js`, Resend (staging custom SMTP, free-tier test sender — see `docs/KNOWN-ISSUES-REGISTER.md` for the pending domain-verification blocker). Twilio not started. Repo: `github.com/Byahye800/cleaning-platform`, branch `main` only.
 
 ## Where to look for what
 
@@ -49,4 +49,4 @@ Full rationale and the migration that established this: `ARCHITECTURE-DECISIONS.
 
 ## Current position in one line
 
-Stage 2.4 (onboarding UI + admin-gated activation), inside Stage 2 (account lifecycle rebuild), which blocks Phase 0/6/7 of the long-term product roadmap. See `CURRENT-STATE.md` for the exact file-by-file position.
+Stage 2 (account onboarding/invitation lifecycle) is code-complete including the admin Invite UI; the staging-infrastructure track (a separate work stream) has Checkpoints 1-5 and Checkpoint 6 Phase A complete, blocked on a Resend domain-verification issue before Stage 2.5 live E2E testing can proceed. See `CURRENT-STATE.md` for the exact current position.
