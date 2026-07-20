@@ -92,6 +92,14 @@ export default function OnboardingPage() {
       if (typeof window === 'undefined') return;
 
       const params = new URLSearchParams(window.location.search);
+      const errorParam = params.get('error');
+      if (errorParam === 'invitation_failed') {
+        if (!cancelled) {
+          setState('session_error');
+          setErrorMessage("We couldn't verify your invitation. The link may be invalid or expired.");
+        }
+        return;
+      }
       const invitation = params.get('invitation');
       const code = params.get('code');
 
