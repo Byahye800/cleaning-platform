@@ -100,9 +100,9 @@ No migration file was edited as part of the Checkpoint 3 Remediation — per exp
 
 **Staging Impact:** Confirmed present — first (and only) real end-to-end onboarding attempt on staging, using the preserved invitation `1d279bf1-aa8f-4c2f-b0c9-661255d8b5a0`, failed at this exact point on 2026-07-20.
 
-**Status:** RESOLVED (2026-07-20)
+**Status:** Code fix RESOLVED (2026-07-20) — deployed to `main`/staging. **End-to-end verification PENDING.** Do not treat this issue, or the cleaner onboarding flow, as certified, locked, or fully resolved until Checkpoint 1 (live browser onboarding walkthrough + post-Finish database/lifecycle state + cleaner portal access-isolation checks) passes in full — see `docs/SESSION-LOG.md`, 2026-07-20 entry, for live status.
 
-**Priority:** High while open — this blocked the entire onboarding flow end-to-end for every cleaner and client account; no workaround existed short of a code fix.
+**Priority:** High while open — this blocked the entire onboarding flow end-to-end for every cleaner and client account; no workaround existed short of a code fix. Remains High/open in spirit until Checkpoint 1's live verification passes — the code fix alone does not close this out.
 
 **Resolution:** `src/app/api/onboarding/profile/route.ts` now builds a `currentRowSelect` string based on `role` (mirroring `/api/auth/invitation/status`'s existing pattern) before querying — single file, 12 insertions/2 deletions, no schema/RPC/auth/invitation-lifecycle change. Verified via a full Production Engineering Confirmation Cycle (compile/lint/build, a direct live query against the preserved failed record proving the corrected query succeeds, security/regression review) before delivery. Delivered as commit `85e51fa` on `main` via GitHub's web editor after a sandbox git-push-credential failure (see `docs/SESSION-LOG.md`, 2026-07-20 entry, for the full delivery story and the known local/remote whitespace-only divergence between local commit `4e6d906` and `85e51fa`).
 
