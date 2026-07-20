@@ -57,6 +57,11 @@ type LifecycleStatus = 'restricted' | 'active' | 'suspended' | 'disabled';
 const KNOWN_STATUSES: readonly LifecycleStatus[] = ['restricted', 'active', 'suspended', 'disabled'];
 const KNOWN_ROLES: readonly Role[] = ['admin', 'cleaner', 'client'];
 
+// UUID format guard for the ?invitation= query param, mirrored from
+// src/app/auth/confirm/route.ts's own UUID_RE (not shared/imported --
+// keeping this file's dependency surface unchanged).
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function portalForPath(pathname: string): Role | null {
     if (pathname.startsWith('/admin')) return 'admin';
     if (pathname.startsWith('/cleaner')) return 'cleaner';
@@ -200,6 +205,43 @@ const candidateRole = roleRows[0]?.role as string | undefined;
     const role = KNOWN_ROLES.find((r) => r === candidateRole);
 
 if (!role) {
+    // Narrow onboarding-finalization exception. A user who just accepted a
+    // real invite via /auth/confirm's verifyOtp now holds a valid session
+    // but, by design, has no user_roles row until finalize_account_invitation
+    // runs from the onboarding page itself. Without this, every invite
+    // acceptance fails closed here before onboarding can ever render.
+    //
+    // This does NOT relax the fail-closed rule generally: it fires only for
+    // the exact "no role row exists at all" case (never 'unknown_role',
+    // never a lookup error -- both still fall straight through to the
+    // unconditional sign-out below), and only when the database's own
+    // single source of truth -- invitation_finalization_eligibility(),
+    // migration 0030 -- reports this exact invitation as eligible for the
+    // currently authenticated caller. proxy.ts makes no eligibility
+    // judgment of its own (no row-count or id-comparison logic here): it
+    // consumes one explicit boolean the database computed. Any future
+    // eligibility rule (tenant suspension, onboarding freeze, compliance
+    // hold, etc.) only ever needs to change that function, never this file.
+    if (!candidateRole && pathname === '/onboarding') {
+        const invitationParam = request.nextUrl.searchParams.get('invitation');
+        if (invitationParam && UUID_RE.test(invitationParam)) {
+            const { data: eligibility, error: eligibilityError } = await supabase
+                .rpc('invitation_finalization_eligibility', { p_invitation_id: invitationParam })
+                .maybeSingle();
+            const eligibilityRow = eligibility as { eligible_for_finalization?: boolean } | null;
+
+            if (!eligibilityError && eligibilityRow?.eligible_for_finalization === true) {
+                logDecision({
+                    userId: user.id,
+                    pathname,
+                    decision: 'allow',
+                    failureCategory: 'missing_role_pending_invitation',
+                });
+                return response;
+            }
+        }
+    }
+
     logDecision({
         userId: user.id,
         role: candidateRole ?? null,
