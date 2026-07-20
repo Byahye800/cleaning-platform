@@ -1,5 +1,7 @@
 # Project Status
 
+> **Governance:** All engineering work, checkpoints, approvals, and completion criteria on this project are governed by [`docs/ENGINEERING-PROTOCOL.md`](ENGINEERING-PROTOCOL.md). Read it before beginning any work on this project.
+
 ## Current State (as of 2026-07-07)
 Live app running on Hostinger VPS at http://187.124.112.253:3002, PM2-managed, deployed via git pull from GitHub (Byahye800/cleaning-platform). Claude Code installed on VPS for direct development. No domain/HTTPS yet — pending.
 

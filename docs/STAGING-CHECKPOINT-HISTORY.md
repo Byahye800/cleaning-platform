@@ -1,5 +1,7 @@
 # STAGING-CHECKPOINT-HISTORY.md
 
+> **Governance:** All engineering work, checkpoints, approvals, and completion criteria on this project are governed by [`docs/ENGINEERING-PROTOCOL.md`](ENGINEERING-PROTOCOL.md). Read it before beginning any work on this project.
+
 **Purpose:** the authoritative record of every staging-environment checkpoint, its outcome, and its evidence. Update this file at the end of every checkpoint — do not delete or rewrite completed entries, only append.
 
 ---

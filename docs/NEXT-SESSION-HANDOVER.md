@@ -1,5 +1,7 @@
 # NEXT-SESSION-HANDOVER.md
 
+> **Governance:** All engineering work, checkpoints, approvals, and completion criteria on this project are governed by [`docs/ENGINEERING-PROTOCOL.md`](ENGINEERING-PROTOCOL.md). Read it before beginning any work on this project.
+
 **Written for an engineer (or a future Claude session) with zero prior context on this project.** Read this file first, before touching anything.
 
 ---

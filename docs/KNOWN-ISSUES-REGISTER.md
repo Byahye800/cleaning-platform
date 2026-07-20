@@ -1,5 +1,7 @@
 # KNOWN-ISSUES-REGISTER.md
 
+> **Governance:** All engineering work, checkpoints, approvals, and completion criteria on this project are governed by [`docs/ENGINEERING-PROTOCOL.md`](ENGINEERING-PROTOCOL.md). Read it before beginning any work on this project.
+
 **Purpose:** track known defects and open risks across the project that are not yet fixed, with enough detail that anyone picking this up cold can understand the issue without re-deriving it. Do not delete resolved issues — mark them Resolved with a date and pointer to the fix, keep them in this file for history.
 
 ---

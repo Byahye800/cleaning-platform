@@ -1,5 +1,7 @@
 # Session Log
 
+> **Governance:** All engineering work, checkpoints, approvals, and completion criteria on this project are governed by [`docs/ENGINEERING-PROTOCOL.md`](ENGINEERING-PROTOCOL.md). Read it before beginning any work on this project.
+
 Running dated log of work sessions on this codebase. Newest entries at the top.
 
 ## 2026-07-18 — Admin Invite UI built and deployed to staging; live invite test reveals Resend domain-verification blocker (Checkpoint 6 Phase B continuation)

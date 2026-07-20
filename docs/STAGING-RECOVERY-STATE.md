@@ -1,5 +1,7 @@
 # STAGING-RECOVERY-STATE.md
 
+> **Governance:** All engineering work, checkpoints, approvals, and completion criteria on this project are governed by [`docs/ENGINEERING-PROTOCOL.md`](ENGINEERING-PROTOCOL.md). Read it before beginning any work on this project.
+
 **Purpose:** the single source of truth for "what state is the staging environment in right now," for recovery after a laptop crash, Claude context loss, VPS loss, or staging loss. **Update this file at the end of every session that changes staging state.**
 
 **Last updated:** 2026-07-18 (Checkpoint 4, Checkpoint 5, and Checkpoint 6 Phase A complete; Checkpoint 6 Phase B in progress)
