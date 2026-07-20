@@ -1,5 +1,7 @@
 # CLAUDE.md — Repo-Level Orientation for Any AI Agent
 
+> **Governance:** All engineering work, checkpoints, approvals, and completion criteria on this project are governed by [`docs/ENGINEERING-PROTOCOL.md`](docs/ENGINEERING-PROTOCOL.md). Read it before beginning any work on this project.
+
 Read this file first, every session, before touching anything. It exists because this project has already survived one context-loss event mid-implementation (2026-07-13, Stage 2.4) and the standing rule going forward is: **conversation memory is never the primary source of truth. This file tree is.**
 
 ## What this project is
