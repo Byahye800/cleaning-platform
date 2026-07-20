@@ -84,6 +84,33 @@ No migration file was edited as part of the Checkpoint 3 Remediation — per exp
 
 **Resolution:** Resolved via migration `0029_job_billing_and_cleaner_pay_rates_schema.sql`, applied to staging (`jwdfzgibrijcyypibhjw`) on 2026-07-18. The migration captures `set_updated_at()`, `job_billing`, and `cleaner_pay_rates` using `create table if not exists`/`create or replace function`, with a fail-fast structural validation that aborts the transaction if an existing table's structure doesn't match expectations, run before any policy or trigger is touched. It also revokes the default `PUBLIC`/`anon`/`authenticated` EXECUTE grant on `set_updated_at()`, matching the `0022`/`0028` precedent. Verified via a five-pass review (original verification, supplementary verification, migration design review, adversarial review, final pre-write hardening review) plus a live structural, security, functional, and idempotency test battery on staging (60 individual checks across schema, RLS, triggers, and app/build verification). Not applied to production as part of this change — production already has these objects; applying there would require separate explicit approval.
 
+
+---
+
+## ONBOARDING-001
+
+**Title:** Onboarding profile-save route selected role-mismatched columns
+
+**Description:** The onboarding "Finish" step (`POST /api/onboarding/profile`) unconditionally selected `status, invitation_status, onboarding_status, phone, emergency_contact, address, contact_phone` from whichever table (`cleaners` or `clients`) matched the authenticated user's role, regardless of which columns that table actually has. `cleaners` only has `phone`/`emergency_contact`; `clients` only has `address`/`contact_phone` — this split has held since `0005_schema_catchup.sql` and was never violated by any later migration. PostgREST correctly rejected the query with `42703 undefined_column`, surfacing to the user as "Something went wrong saving your details. Please try again."
+**Root Cause:** an isolated inconsistency against the file's own sibling route — `/api/auth/invitation/status` already used a role-scoped `currentRowSelect` ternary; `/api/onboarding/profile` did not.
+
+**Affected Area:** cleaner and client account onboarding, specifically the final "Finish" (`complete_onboarding`) step, reached only after password-set and profile-details entry.
+
+**Production Impact:** Not assessed as part of this fix — this route exists identically in production's codebase (same repository, same file), so the same defect would reproduce there if a real onboarding flow were exercised; production has not had this specific path re-tested as part of this fix.
+
+**Staging Impact:** Confirmed present — first (and only) real end-to-end onboarding attempt on staging, using the preserved invitation `1d279bf1-aa8f-4c2f-b0c9-661255d8b5a0`, failed at this exact point on 2026-07-20.
+
+**Status:** RESOLVED (2026-07-20)
+
+**Priority:** High while open — this blocked the entire onboarding flow end-to-end for every cleaner and client account; no workaround existed short of a code fix.
+
+**Resolution:** `src/app/api/onboarding/profile/route.ts` now builds a `currentRowSelect` string based on `role` (mirroring `/api/auth/invitation/status`'s existing pattern) before querying — single file, 12 insertions/2 deletions, no schema/RPC/auth/invitation-lifecycle change. Verified via a full Production Engineering Confirmation Cycle (compile/lint/build, a direct live query against the preserved failed record proving the corrected query succeeds, security/regression review) before delivery. Delivered as commit `85e51fa` on `main` via GitHub's web editor after a sandbox git-push-credential failure (see `docs/SESSION-LOG.md`, 2026-07-20 entry, for the full delivery story and the known local/remote whitespace-only divergence between local commit `4e6d906` and `85e51fa`).
+
+**Production:** not touched. This fix was committed to `main` (the single branch used for both production and staging deployments in this repository) but has not been separately deployed/verified against the production Supabase project or production traffic as part of this fix.
+
+**STAGING-001:** unaffected, remains Open (see above).
+
+
 **Production:** not touched. This migration was applied to staging only.
 
 **STAGING-001:** unaffected, remains Open (see above).
