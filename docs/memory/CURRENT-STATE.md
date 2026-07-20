@@ -2,7 +2,7 @@
 
 > **Governance:** All engineering work, checkpoints, approvals, and completion criteria on this project are governed by [`docs/ENGINEERING-PROTOCOL.md`](../ENGINEERING-PROTOCOL.md). Read it before beginning any work on this project.
 
-**Last updated:** 2026-07-13, this session. **Update this file at the end of every session that changes project state — this is the single most important file to keep accurate.**
+**Last updated:** 2026-07-13 (full session); 2026-07-20 (partial — ONBOARDING-001 fix delivered as `85e51fa` and Checkpoint 1 paused-at-password-step status only; see the 2026-07-20 note in `ACTIVE-WORK.md`'s Staging environment track and `docs/SESSION-LOG.md` for full detail — the rest of this file is otherwise unchanged from 2026-07-13 and has not been re-verified this pass). **Update this file at the end of every session that changes project state — this is the single most important file to keep accurate.**
 
 ## One-line position
 
