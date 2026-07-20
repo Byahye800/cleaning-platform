@@ -103,9 +103,9 @@ if (!isNewReservation) {
   });
 }
 
-const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL}/onboarding?invitation=${reservation.id}`;
-
-const { error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, { redirectTo });
+const { error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+  data: { invitation_id: reservation.id },
+});
 
 if (authError) {
   const reason = classifyAuthDeliveryError(authError);
