@@ -99,10 +99,20 @@ const table = role === 'cleaner' ? 'cleaners' : 'clients';
   const allowedFields = ALLOWED_FIELDS[role];
 
 // Authoritative current row -- always re-read fresh, never trust the
-// browser's claim of current state.
+// browser's claim of current state. Field list is role-scoped (mirrors
+// the pattern already used in /api/auth/invitation/status): cleaners and
+// clients each only have their own role-specific columns (phone/
+// emergency_contact vs. address/contact_phone), so selecting the other
+// role's fields here would reference a column that doesn't exist on this
+// table and fail the query.
+const currentRowSelect =
+  role === 'cleaner'
+  ? 'status, invitation_status, onboarding_status, phone, emergency_contact'
+  : 'status, invitation_status, onboarding_status, address, contact_phone';
+
 const { data: currentRow, error: currentRowError } = await supabaseAdmin
   .from(table)
-  .select('status, invitation_status, onboarding_status, phone, emergency_contact, address, contact_phone')
+  .select(currentRowSelect)
   .eq('user_id', user.id)
   .maybeSingle();
 
