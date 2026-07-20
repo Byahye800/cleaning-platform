@@ -1,5 +1,7 @@
 # VERIFICATION-REGISTER.md
 
+> **Governance:** All engineering work, checkpoints, approvals, and completion criteria on this project are governed by [`docs/ENGINEERING-PROTOCOL.md`](../ENGINEERING-PROTOCOL.md). Read it before beginning any work on this project.
+
 Every significant claim in this project's history, with its actual evidence tier stated honestly. Tiers, low to high: **designed** (spec written, nothing built) → **implemented** (code exists) → **statically verified** (TypeScript/ESLint/build clean) → **DB verified** (live query against the database confirms behavior) → **route verified** (API tested directly, e.g. via curl or a direct call) → **browser verified** (a human or agent clicked through it in an actual browser) → **E2E verified** (full real user journey, real data, real cleanup) → **production verified** (confirmed live on the deployed VPS, not just `origin/main`).
 
 **Rule: never state a higher tier than what was actually done. This file exists because this project has repeatedly found gaps between what was claimed and what was tested, and the fix each time was more rigor, not less.**

@@ -1,5 +1,7 @@
 # RECOVERY-RUNBOOK.md
 
+> **Governance:** All engineering work, checkpoints, approvals, and completion criteria on this project are governed by [`docs/ENGINEERING-PROTOCOL.md`](../ENGINEERING-PROTOCOL.md). Read it before beginning any work on this project.
+
 **Read this the moment you suspect you're a fresh session with no memory of prior work on this project — whether from a context-window compaction, a new chat, or a handoff to a different agent/tool entirely.** This procedure is proven: it's exactly what was executed successfully on 2026-07-13 after a mid-Stage-2.4 context-loss event. Full worked example: `SESSION-SUMMARIES/2026-07-13-context-loss-recovery.md` and the original `STAGE-2-4-RECOVERY-REPORT.md`.
 
 ## The core principle

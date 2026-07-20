@@ -1,5 +1,7 @@
 # SECURITY-MODEL.md
 
+> **Governance:** All engineering work, checkpoints, approvals, and completion criteria on this project are governed by [`docs/ENGINEERING-PROTOCOL.md`](../ENGINEERING-PROTOCOL.md). Read it before beginning any work on this project.
+
 Consolidated security posture for this codebase. Read this before writing any route, RPC, or RLS policy. Sourced from `BUILD-STANDARDS.md` §10, `ITEM-3-SECURITY-REVIEW.md`, `PHASE-0-7-PLATFORM-AUDIT.md` §9, `STAGE-2-INDEPENDENT-AUDIT.md`, and the Stage 2.4 design spec's security sections.
 
 ## The layered model

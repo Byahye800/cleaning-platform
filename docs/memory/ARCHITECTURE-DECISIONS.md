@@ -1,5 +1,7 @@
 # ARCHITECTURE-DECISIONS.md
 
+> **Governance:** All engineering work, checkpoints, approvals, and completion criteria on this project are governed by [`docs/ENGINEERING-PROTOCOL.md`](../ENGINEERING-PROTOCOL.md). Read it before beginning any work on this project.
+
 Decision-record log, newest-relevant-context first within each entry. Each ADR states: the decision, why, and what it superseded (if anything). This is the file to check before "fixing" something that looks wrong but was actually a deliberate choice.
 
 ---

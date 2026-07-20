@@ -1,5 +1,7 @@
 # ACTIVE-WORK.md
 
+> **Governance:** All engineering work, checkpoints, approvals, and completion criteria on this project are governed by [`docs/ENGINEERING-PROTOCOL.md`](../ENGINEERING-PROTOCOL.md). Read it before beginning any work on this project.
+
 **Purpose:** the single place that says "what exactly happens next." Keep this short and precise — it should always answer "if I have 10 minutes and no other context, what do I do" correctly. Superseded/completed items move to `SESSION-SUMMARIES/`, not deleted from history, but this file itself should only ever describe the *current* task.
 
 ## Current task
