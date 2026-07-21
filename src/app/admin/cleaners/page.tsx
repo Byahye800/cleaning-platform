@@ -6,6 +6,35 @@ import { Pencil } from 'lucide-react';
 import { createSupabaseBrowserClient } from '@/lib/supabaseClient';
 import InviteForm from '../_shared/InviteForm';
 
+// ADMIN-CLEANERS-001 UI integration checkpoint.
+//
+// Create and update now go through the approved Route Handlers
+// (POST /api/admin/cleaners, PATCH /api/admin/cleaners/[id]) instead of
+// direct browser writes to `cleaners` / `cleaner_pay_rates`. Those two
+// tables are never written to from the browser on this page anymore --
+// the only remaining direct Supabase calls here are the read-only
+// `select()`s in load().
+//
+// Delete is intentionally NOT wired to anything in this checkpoint. The
+// previous direct-browser `.delete()` call has been removed outright
+// (per explicit decision: no DELETE RPC and no DELETE Route Handler exist
+// yet, and adding one is out of scope for a UI-integration checkpoint --
+// it needs its own DESIGN -> BUILD -> ... -> LOCK cycle). There is
+// currently no way to delete a cleaner from this page.
+//
+// This also fixes a correctness defect found during Phase 1 discovery:
+// the old page kept one shared `form` object for both create and edit,
+// and the per-row "Edit" button called updateCleaner(row.id) using
+// whatever was currently sitting in `form` -- which was only that row's
+// own data if the pencil icon had just been clicked for that exact row.
+// Clicking "Edit" on a different row without first reloading it into the
+// form would silently overwrite that row with stale data. `selectedId`
+// now makes "which cleaner is this form editing" an explicit, single
+// source of truth: null = create mode, otherwise the id of the cleaner
+// being edited. The single Save action always targets `selectedId`, and
+// the per-row "Edit" button (redundant/dangerous under the old design)
+// is gone -- selecting a row for edit is done once, via the pencil icon,
+// exactly as before.
 type CleanerRow = {
   id: string;
   user_id: string;
@@ -21,7 +50,20 @@ type CleanerRow = {
   status: string;
 };
 
-const emptyForm: any = {
+type CleanerForm = {
+  user_id: string;
+  name: string;
+  email: string;
+  phone: string;
+  hourly_rate: string;
+  dbs_status: string;
+  dbs_check_date: string;
+  emergency_contact: string;
+  skills: string;
+  notes: string;
+};
+
+const emptyForm: CleanerForm = {
   user_id: '',
   name: '',
   email: '',
@@ -32,7 +74,6 @@ const emptyForm: any = {
   emergency_contact: '',
   skills: '',
   notes: '',
-  status: 'active',
 };
 
 function parseSkills(input: string): string[] | null {
@@ -50,7 +91,8 @@ export default function AdminCleanersPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [form, setForm] = useState<any>({ ...emptyForm });
+  const [form, setForm] = useState<CleanerForm>({ ...emptyForm });
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   async function load() {
     setError(null);
@@ -69,7 +111,7 @@ export default function AdminCleanersPage() {
       ((ratesRes.data ?? []) as { cleaner_id: string; hourly_rate: number }[]).map((r) => [r.cleaner_id, r.hourly_rate])
     );
     setRows(
-      ((cleanersRes.data ?? []) as any[]).map((c) => ({
+      ((cleanersRes.data ?? []) as Omit<CleanerRow, 'hourly_rate'>[]).map((c) => ({
         ...c,
         hourly_rate: rateByCleanerId.get(c.id) ?? '',
       }))
@@ -77,48 +119,13 @@ export default function AdminCleanersPage() {
   }
 
   useEffect(() => {
-    load().catch((e: any) => setError(e?.message ?? String(e)));
+    load().catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function createCleaner() {
-    setBusy(true);
-    setError(null);
-    try {
-      const hourlyRate = form.hourly_rate === '' ? null : Number(form.hourly_rate);
-      if (!hourlyRate || Number.isNaN(hourlyRate)) {
-        throw new Error('hourly_rate must be a valid number');
-      }
-
-      const payload: any = {
-        user_id: form.user_id || null,
-        name: form.name,
-        email: form.email,
-        phone: form.phone || null,
-        dbs_status: form.dbs_status || null,
-        dbs_check_date: form.dbs_check_date || null,
-        emergency_contact: form.emergency_contact || null,
-        skills: parseSkills(form.skills),
-        notes: form.notes || null,
-        status: form.status,
-      };
-
-      const { data: inserted, error } = await supabase.from('cleaners').insert(payload).select('id').single();
-      if (error) throw error;
-
-      const { error: rateError } = await supabase.from('cleaner_pay_rates').upsert({ cleaner_id: inserted.id, hourly_rate: hourlyRate });
-      if (rateError) throw rateError;
-
-      setForm({ ...emptyForm });
-      await load();
-    } catch (e: any) {
-      setError(e?.message ?? String(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   function pickRow(r: CleanerRow) {
+    setError(null);
+    setSelectedId(r.id);
     setForm({
       user_id: r.user_id,
       name: r.name,
@@ -130,57 +137,90 @@ export default function AdminCleanersPage() {
       emergency_contact: r.emergency_contact ?? '',
       skills: (r.skills ?? []).join(', '),
       notes: r.notes ?? '',
-      status: r.status,
     });
   }
 
-  async function updateCleaner(id: string) {
+  function clearSelection() {
+    setSelectedId(null);
+    setForm({ ...emptyForm });
+    setError(null);
+  }
+
+  async function save() {
     setBusy(true);
     setError(null);
     try {
-      const hourlyRate = Number(form.hourly_rate);
-      if (Number.isNaN(hourlyRate)) throw new Error('hourly_rate must be a valid number');
+      const trimmedName = form.name.trim();
+      if (!trimmedName) throw new Error('name is required.');
 
-      const payload: any = {
-        user_id: form.user_id || null,
-        name: form.name,
-        email: form.email,
-        phone: form.phone || null,
-        dbs_status: form.dbs_status || null,
-        dbs_check_date: form.dbs_check_date || null,
-        emergency_contact: form.emergency_contact || null,
-        skills: parseSkills(form.skills),
-        notes: form.notes || null,
-        status: form.status,
-      };
+      const trimmedEmail = form.email.trim();
+      if (!trimmedEmail) throw new Error('email is required.');
 
-      const { error } = await supabase.from('cleaners').update(payload).eq('id', id);
-      if (error) throw error;
+      const trimmedRate = form.hourly_rate.trim();
+      if (!trimmedRate) throw new Error('hourly_rate is required.');
+      const hourlyRate = Number(trimmedRate);
+      if (!Number.isFinite(hourlyRate) || hourlyRate <= 0) {
+        throw new Error('hourly_rate must be a number greater than 0.');
+      }
 
-      const { error: rateError } = await supabase.from('cleaner_pay_rates').upsert({ cleaner_id: id, hourly_rate: hourlyRate });
-      if (rateError) throw rateError;
+      const skills = parseSkills(form.skills);
 
+      let res: Response;
+      if (selectedId) {
+        // Update always targets selectedId -- the id captured when this
+        // row was loaded into the form -- never anything inferred from
+        // the currently-rendered table.
+        res = await fetch(`/api/admin/cleaners/${selectedId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: trimmedName,
+            email: trimmedEmail,
+            phone: form.phone,
+            dbs_status: form.dbs_status,
+            dbs_check_date: form.dbs_check_date,
+            emergency_contact: form.emergency_contact,
+            skills: skills ?? [],
+            notes: form.notes,
+            hourly_rate: hourlyRate,
+          }),
+        });
+      } else {
+        const payload: Record<string, unknown> = {
+          name: trimmedName,
+          email: trimmedEmail,
+          hourly_rate: hourlyRate,
+        };
+        if (form.user_id.trim()) payload.user_id = form.user_id.trim();
+        if (form.phone.trim()) payload.phone = form.phone.trim();
+        if (form.dbs_status) payload.dbs_status = form.dbs_status;
+        if (form.dbs_check_date) payload.dbs_check_date = form.dbs_check_date;
+        if (form.emergency_contact.trim()) payload.emergency_contact = form.emergency_contact.trim();
+        if (skills) payload.skills = skills;
+        if (form.notes.trim()) payload.notes = form.notes.trim();
+
+        res = await fetch('/api/admin/cleaners', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
+
+      const body = await res.json().catch(() => null);
+      if (!res.ok || !body?.success) {
+        throw new Error(body?.error?.message ?? 'Save failed. Please try again.');
+      }
+
+      clearSelection();
       await load();
-    } catch (e: any) {
-      setError(e?.message ?? String(e));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
   }
 
-  async function deleteCleaner(id: string) {
-    setBusy(true);
-    setError(null);
-    try {
-      const { error } = await supabase.from('cleaners').delete().eq('id', id);
-      if (error) throw error;
-      await load();
-    } catch (e: any) {
-      setError(e?.message ?? String(e));
-    } finally {
-      setBusy(false);
-    }
-  }
+  const isEditing = selectedId !== null;
 
   return (
     <div>
@@ -203,47 +243,62 @@ export default function AdminCleanersPage() {
       <InviteForm role="cleaner" />
 
       <section style={{ padding: 14, border: '1px solid #e5e7eb', borderRadius: 12, marginBottom: 18 }}>
-        <h3 style={{ marginTop: 0 }}>Create / Edit (manual, advanced)</h3>
+        <h3 style={{ marginTop: 0 }}>{isEditing ? 'Edit cleaner' : 'Create cleaner (manual, advanced)'}</h3>
         <div style={gridStyle}>
-          <Field label="user_id (auth.users UUID)" value={form.user_id} onChange={(v) => setForm((p: any) => ({ ...p, user_id: v }))} placeholder="UUID" />
-          <Field label="name" value={form.name} onChange={(v) => setForm((p: any) => ({ ...p, name: v }))} placeholder="John Doe Cleaning" />
-          <Field label="email" value={form.email} onChange={(v) => setForm((p: any) => ({ ...p, email: v }))} placeholder="cleaner@example.com" />
-          <Field label="phone" value={form.phone} onChange={(v) => setForm((p: any) => ({ ...p, phone: v }))} placeholder="Optional" />
-          <Field label="hourly_rate" value={form.hourly_rate} onChange={(v) => setForm((p: any) => ({ ...p, hourly_rate: v }))} placeholder="e.g. 18.50" />
+          <Field
+            label={isEditing ? 'user_id (set at creation only)' : 'user_id (auth.users UUID)'}
+            value={form.user_id}
+            onChange={(v) => setForm((p) => ({ ...p, user_id: v }))}
+            placeholder="UUID"
+            disabled={isEditing}
+          />
+          <Field label="name" value={form.name} onChange={(v) => setForm((p) => ({ ...p, name: v }))} placeholder="John Doe Cleaning" />
+          <Field label="email" value={form.email} onChange={(v) => setForm((p) => ({ ...p, email: v }))} placeholder="cleaner@example.com" />
+          <Field label="phone" value={form.phone} onChange={(v) => setForm((p) => ({ ...p, phone: v }))} placeholder="Optional" />
+          <Field label="hourly_rate" value={form.hourly_rate} onChange={(v) => setForm((p) => ({ ...p, hourly_rate: v }))} placeholder="e.g. 18.50" />
           <SelectField
             label="dbs_status"
             value={form.dbs_status}
-            onChange={(v) => setForm((p: any) => ({ ...p, dbs_status: v }))}
+            onChange={(v) => setForm((p) => ({ ...p, dbs_status: v }))}
             options={['pending', 'clear', 'flagged', 'expired']}
           />
           <Field
             label="dbs_check_date"
             type="date"
             value={form.dbs_check_date}
-            onChange={(v) => setForm((p: any) => ({ ...p, dbs_check_date: v }))}
+            onChange={(v) => setForm((p) => ({ ...p, dbs_check_date: v }))}
           />
           <Field
             label="emergency_contact"
             value={form.emergency_contact}
-            onChange={(v) => setForm((p: any) => ({ ...p, emergency_contact: v }))}
+            onChange={(v) => setForm((p) => ({ ...p, emergency_contact: v }))}
             placeholder="Optional"
           />
           <Field
             label="skills (comma-separated)"
             value={form.skills}
-            onChange={(v) => setForm((p: any) => ({ ...p, skills: v }))}
+            onChange={(v) => setForm((p) => ({ ...p, skills: v }))}
             placeholder="windows, deep-clean, carpets"
           />
-          <Field label="notes" value={form.notes} onChange={(v) => setForm((p: any) => ({ ...p, notes: v }))} placeholder="Optional" />
-          <SelectField label="status" value={form.status} onChange={(v) => setForm((p: any) => ({ ...p, status: v }))} options={['pending', 'active', 'disabled']} />
+          <Field label="notes" value={form.notes} onChange={(v) => setForm((p) => ({ ...p, notes: v }))} placeholder="Optional" />
         </div>
 
-        <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
-          <button onClick={createCleaner} disabled={busy} style={primaryBtn}>
-            {busy ? 'Working…' : 'Create cleaner'}
+        <div style={{ fontSize: 12, color: '#6b7280', marginTop: 10 }}>
+          Account status (restricted / active / suspended) is not editable here -- new cleaners always start
+          restricted, and existing accounts are activated from their profile page.
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+          <button onClick={save} disabled={busy} style={primaryBtn}>
+            {isEditing ? (busy ? 'Saving…' : 'Save changes') : busy ? 'Working…' : 'Create cleaner'}
           </button>
+          {isEditing && (
+            <button onClick={clearSelection} disabled={busy} style={secondaryBtn}>
+              Clear selection
+            </button>
+          )}
           <div style={{ fontSize: 12, color: '#6b7280', alignSelf: 'center' }}>
-            For edit/delete: click a row to load it into the form, then use that row’s actions.
+            Click the pencil next to a cleaner&rsquo;s name to load it here for editing.
           </div>
         </div>
       </section>
@@ -259,19 +314,18 @@ export default function AdminCleanersPage() {
                 <th style={thStyle}>DBS status</th>
                 <th style={thStyle}>Status</th>
                 <th style={thStyle}>Hourly</th>
-                <th style={thStyle}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: 12, color: '#6b7280' }}>
+                  <td colSpan={5} style={{ padding: 12, color: '#6b7280' }}>
                     No rows (or RLS denied SELECT).
                   </td>
                 </tr>
               ) : (
                 rows.map((r) => (
-                  <tr key={r.id}>
+                  <tr key={r.id} style={r.id === selectedId ? selectedRowStyle : undefined}>
                     <td style={tdStyle}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Link href={`/admin/cleaners/${r.id}`} style={{ fontWeight: 600 }}>
@@ -290,20 +344,6 @@ export default function AdminCleanersPage() {
                     <td style={tdStyle}>{r.dbs_status ?? ''}</td>
                     <td style={tdStyle}>{r.status}</td>
                     <td style={tdStyle}>{String(r.hourly_rate ?? '')}</td>
-                    <td style={tdStyle}>
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <button disabled={busy} onClick={() => updateCleaner(r.id)} style={secondaryBtn}>
-                          Edit
-                        </button>
-                        <button
-                          disabled={busy}
-                          onClick={() => deleteCleaner(r.id)}
-                          style={{ ...secondaryBtn, background: '#fff', borderColor: '#ef4444', color: '#b91c1c' }}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
                   </tr>
                 ))
               )}
@@ -321,17 +361,26 @@ function Field({
   onChange,
   placeholder,
   type = 'text',
+  disabled = false,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   type?: string;
+  disabled?: boolean;
 }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <span style={{ fontSize: 12, color: '#6b7280' }}>{label}</span>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} style={inputStyle} />
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={disabled}
+        style={disabled ? { ...inputStyle, background: '#f3f4f6', color: '#9ca3af' } : inputStyle}
+      />
     </label>
   );
 }
@@ -401,4 +450,8 @@ const tdStyle: React.CSSProperties = {
   padding: 10,
   borderBottom: '1px solid #f3f4f6',
   fontSize: 13,
+};
+
+const selectedRowStyle: React.CSSProperties = {
+  background: '#f0f9ff',
 };
