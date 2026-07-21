@@ -26,7 +26,6 @@ const emptyForm: any = {
   contact_phone: '',
   agreed_rate: null as number | null,
   notes: '',
-  status: 'active',
 };
 
 export default function AdminClientsPage() {
@@ -67,7 +66,12 @@ export default function AdminClientsPage() {
         contact_phone: form.contact_phone || null,
         agreed_rate: form.agreed_rate,
         notes: form.notes || null,
-        status: form.status,
+        // Account status is intentionally not settable from this form. New clients
+        // always start 'restricted' -- matching the same lifecycle-entry rule
+        // already established for cleaners (admin_create_cleaner, migration 0031).
+        // Activation is the sole responsibility of the dedicated activation flow
+        // on the client's own profile page (/admin/clients/[id]).
+        status: 'restricted',
       };
 
       const { error } = await supabase.from('clients').insert(payload);
@@ -95,7 +99,12 @@ export default function AdminClientsPage() {
         contact_phone: form.contact_phone || null,
         agreed_rate: form.agreed_rate,
         notes: form.notes || null,
-        status: form.status,
+        // Account status is intentionally omitted here -- this general edit path
+        // must never be able to change it. Lifecycle transitions (restricted ->
+        // active, and any future suspend/disable flow) belong exclusively to the
+        // activation flow on the client's own profile page (/admin/clients/[id]),
+        // matching the same boundary already enforced for cleaners by
+        // admin_update_cleaner's allow-listed fields (migration 0031).
       };
 
       const { error } = await supabase.from('clients').update(payload).eq('id', id);
@@ -137,7 +146,6 @@ export default function AdminClientsPage() {
       contact_phone: r.contact_phone ?? '',
       agreed_rate: r.agreed_rate,
       notes: r.notes ?? '',
-      status: r.status,
     });
   }
 
@@ -196,12 +204,11 @@ export default function AdminClientsPage() {
             placeholder="e.g. 120.50"
           />
           <Field label="notes" value={form.notes} onChange={(v) => setForm((p: any) => ({ ...p, notes: v }))} placeholder="Optional" />
-          <SelectField
-            label="status"
-            value={form.status ?? 'active'}
-            onChange={(v) => setForm((p: any) => ({ ...p, status: v }))}
-            options={['pending', 'active', 'disabled']}
-          />
+        </div>
+
+        <div style={{ marginTop: 10, fontSize: 12, color: '#6b7280' }}>
+          Account status (restricted / active / suspended / disabled) is not editable here -- new
+          clients always start restricted, and existing accounts are activated from their profile page.
         </div>
 
         <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
@@ -326,31 +333,6 @@ function Field({
     <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <span style={{ fontSize: 12, color: '#6b7280' }}>{label}</span>
       <input value={value as any} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} style={inputStyle} />
-    </label>
-  );
-}
-
-function SelectField({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: string[];
-}) {
-  return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <span style={{ fontSize: 12, color: '#6b7280' }}>{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} style={inputStyle}>
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </select>
     </label>
   );
 }
