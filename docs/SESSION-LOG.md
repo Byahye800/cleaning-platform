@@ -4,6 +4,24 @@
 
 Running dated log of work sessions on this codebase. Newest entries at the top.
 
+## 2026-07-21 — CLIENT-ISSUES-001: client issue reporting built and live E2E-verified on staging; dashboard actor-mislabeling hotfix applied in-cycle; LOCKED
+
+**Scope note:** third child cycle of `FMPRO-OPERATIONS-HARDENING-001`, continuing directly from the `ADMIN-INVITATIONS-001` LOCK entry immediately below. Governed by `docs/ENGINEERING-PROTOCOL.md`'s Production Engineering Confirmation Cycle (DESIGN -> BUILD -> COMPILE -> FUNCTION TEST -> VERIFY -> SECURITY -> ROLE TESTING -> INTEGRATION -> EVIDENCE -> DOCUMENT -> LOCK).
+
+**DESIGN (approved):** confirmed no schema, RLS policy, or RPC surface existed for clients to report or comment on issues against their own jobs; role-check constraints on `issues.reported_by_role` and `issue_comments.author_role` only admitted `'staff'`/`'cleaner'`. Approved scope: one migration (RLS + RPCs), client-facing UI wiring, and the notification trigger correction.
+
+**BUILD:** migration `0032_client_issue_reporting.sql` (commit `0cf4e54`) widens the two role-check constraints to admit `'client'`; adds RLS SELECT policies "Clients read own job issues" / "Clients read own job issue comments"; adds `client_report_issue(p_job_id, p_description)` and `client_add_issue_comment(p_issue_id, p_body)` as `SECURITY DEFINER` RPCs granted to `authenticated` only; corrects `notify_on_new_issue_comment()` to branch three ways by author role. Client-facing UI landed in commits `a127d81` and `b94dc93`. The dashboard actor-mislabeling hotfix (commit `7d986c5`) mirrors the pre-existing `admin/jobs/[id]/page.tsx` cleaner-then-client-then-Admin resolver pattern (first shipped commit `eb06b0f`) inside `src/app/admin/page.tsx`'s Recent Activity feed.
+
+**COMPILE:** `tsc` clean, ESLint clean, `next build` succeeded for every commit in this cycle, including the hotfix.
+
+**FUNCTION TEST / SECURITY / ROLE TESTING / INTEGRATION:** full client issue-reporting UI flow (report + comment) live E2E-verified on staging; cross-client isolation, role-forgery, and anonymous-rejection paths tested; admin, client, cleaner, and anonymous roles individually tested; regression check confirmed no other admin/cleaner/client flows affected. Dashboard hotfix repair remained tightly scoped to `src/app/admin/page.tsx` only; live verification confirmed Client A and Client B activity now render with correct client identity (never "Admin"), admin- and Stripe-originated activity rows unaffected, all other Dashboard widgets rendering correctly, and core CLIENT-ISSUES-001 job-detail flows unchanged.
+
+**Test data:** test Client A and Client B created via the real invite flow, with test jobs created for each; retained per the owner's decision rather than deleted post-verification.
+
+**In-cycle hotfix:** the dashboard actor-mislabeling defect was discovered during in-cycle regression review, root-caused before any modification, repaired with a minimal change scoped strictly to `src/app/admin/page.tsx`, and independently reviewed and approved prior to LOCK. Disclosed limitation, accepted at LOCK: no live cleaner-originated activity was available on staging to exercise the cleaner-name resolution branch live end-to-end; accepted because that branch remained byte-identical to its pre-hotfix form and no behavioral change was introduced to it.
+
+**Status:** RESOLVED — **LOCKED (2026-07-21)**. Commits: `0cf4e54`, `a127d81`, `b94dc93`, `eb06b0f`, `7d986c5`. Next child cycle: `SCHEDULE-INTEGRITY-001`.
+
 ## 2026-07-21 — ADMIN-INVITATIONS-001: read-only admin invitations list + Resend/Cancel actions built, live E2E-verified on staging, LOCKED
 
 **Scope note:** second child cycle of `FMPRO-OPERATIONS-HARDENING-001`, continuing directly from the `ADMIN-CLIENTS-001` LOCK entry immediately below. Governed by `docs/ENGINEERING-PROTOCOL.md`'s Production Engineering Confirmation Cycle (DESIGN -> BUILD -> COMPILE -> FUNCTION TEST -> VERIFY -> SECURITY -> ROLE TESTING -> INTEGRATION -> EVIDENCE -> DOCUMENT -> LOCK).
