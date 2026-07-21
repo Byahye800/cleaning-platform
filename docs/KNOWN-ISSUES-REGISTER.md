@@ -193,3 +193,29 @@ No migration file was edited as part of the Checkpoint 3 Remediation — per exp
 **Suggested scope for a future approved cycle (not yet designed in detail):** a fifth "Needs your attention" category covering cleaner/client records with missing mandatory profile fields (starting with `name`, since that is the concretely observed case), sourced by a new or extended query in `admin/page.tsx`'s dashboard data-loading code, rendered the same way as the four existing categories in `ActionItems.tsx`. Whether this should also cover other categories floated during the original review (failed invitations, checklist failures, attendance corrections, payroll exceptions, outstanding client issues) is an open design question for that future cycle, not decided here.
 
 **Related:** `ADMIN-CLEANERS-002` above (the specific record whose blank Name prompted this finding).
+
+---
+
+## ADMIN-CLIENTS-001
+
+**Title:** Admin Clients create/edit form exposed an unsupported client status value, and allowed arbitrary status changes outside the intended lifecycle-activation flow
+
+**Description:** The Admin Clients page (`/admin/clients`) create/edit form included an editable `status` dropdown with options `['pending', 'active', 'disabled']`. The live `clients_status_check` constraint (migration `0024`) permits only `restricted`, `active`, `suspended`, `disabled` — `pending` was never a valid value, so selecting it in the form would have produced a silent constraint-violation failure on save. Separately, the dropdown allowed any admin to set a client's status directly through the general create/edit workflow, bypassing the dedicated activation flow that governs lifecycle transitions elsewhere in the platform.
+
+**Root Cause:** the Clients form's status control was never updated after the account-lifecycle model was redefined (Stage 2.1, migration `0024`) to its final `restricted/active/suspended/disabled` set, and was never brought in line with the equivalent control on the Cleaners form, which had already been fixed to exclude status entirely (see `admin_create_cleaner`/`admin_update_cleaner`, migration `0031`).
+
+**Affected Area:** `src/app/admin/clients/page.tsx` only.
+
+**Discovered:** 2026-07-21, during the `NEEDS-ATTENTION-001` Operations Attention Map review (`FMPRO-OPERATIONS-HARDENING-001` programme, child cycle 1).
+
+**Status:** RESOLVED — **LOCKED (2026-07-21)**, per `docs/ENGINEERING-PROTOCOL.md`.
+
+**Priority:** Medium — no data was ever actually corrupted (the invalid value would have been rejected by the DB constraint, not silently written), but the control was live and reachable, and the arbitrary-status-change gap was a real lifecycle-governance bypass.
+
+**Resolution (Option B, approved):** the editable status control was removed entirely, rather than just correcting its value list — chosen specifically to maintain a single, consistent account-lifecycle philosophy across all user types (cleaners and clients alike), matching the already-established cleaner pattern. `emptyForm` no longer has a `status` field. `createClient()` now always submits `status: 'restricted'` on insert (documented in-line, mirrors `admin_create_cleaner`). `updateClient()` no longer sends `status` at all (mirrors `admin_update_cleaner`'s allow-listed-fields exclusion). `pickRow()` no longer copies `status` into form state. The `SelectField` helper component, now unused, was removed as dead code rather than left orphaned. A read-only explanatory line replaced the dropdown in the JSX. No schema, migration, RPC, or route-handler change — single file, +17/-35 lines, commit `f045a6b`.
+
+**Verification:** `tsc` clean, ESLint net -1 errors (removed one incidental `any` usage inside the deleted `SelectField`, zero new issues), full `next build` succeeded across all 32 routes. Live E2E against `https://cleaning-platform-staging.vercel.app` after deployment reached Ready: created a client through the live UI and confirmed via direct SQL (not just the UI) that it inserted with `status = 'restricted'`; edited the same client's notes through the live UI and confirmed via direct SQL that `notes` updated while `status` remained `restricted`, unchanged; confirmed no status control exists anywhere in the UI, so submitting an unsupported value is now structurally impossible; deleted the test client via the UI and confirmed via direct SQL that the row was removed. Regression: commit diff confirmed exactly one file changed; `ADMIN-CLEANERS-001`/`ADMIN-CLEANERS-002` files were not part of this commit. The `/admin/clients/[id]` activation-flow page (untouched by this change) was confirmed to render correctly for the test client -- **this was page/render verification only; the restricted->active transition action itself was not executed as part of this verification pass.**
+
+**Production:** not touched. Committed to `main` (used for both staging and production deploys in this repository) but not separately verified against production traffic.
+
+**Related:** first child cycle of the `FMPRO-OPERATIONS-HARDENING-001` programme (Production Remediation and Capability Completion Programme), opened to remediate verified defects found during the `NEEDS-ATTENTION-001` design review before that attention engine is built. Next child cycle: `ADMIN-INVITATIONS-001`.
