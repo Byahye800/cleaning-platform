@@ -156,11 +156,25 @@ export default function AdminCleanersPage() {
       const trimmedEmail = form.email.trim();
       if (!trimmedEmail) throw new Error('email is required.');
 
+      // ADMIN-CLEANERS-002: hourly_rate is only unconditionally required
+      // when creating a brand-new cleaner. In edit mode, a cleaner may
+      // not have a cleaner_pay_rates row yet (e.g. self-service
+      // onboarding never collects one) -- the PATCH Route Handler and
+      // admin_update_cleaner RPC already support field-scoped partial
+      // updates and only touch hourly_rate/cleaner_pay_rates when the
+      // caller actually supplies it. Leaving this field blank while
+      // editing must be able to save every other field without
+      // inventing or touching payroll data. If a value IS supplied
+      // (create or edit), it is still validated as a positive number.
       const trimmedRate = form.hourly_rate.trim();
-      if (!trimmedRate) throw new Error('hourly_rate is required.');
-      const hourlyRate = Number(trimmedRate);
-      if (!Number.isFinite(hourlyRate) || hourlyRate <= 0) {
-        throw new Error('hourly_rate must be a number greater than 0.');
+      let hourlyRate: number | null = null;
+      if (trimmedRate) {
+        hourlyRate = Number(trimmedRate);
+        if (!Number.isFinite(hourlyRate) || hourlyRate <= 0) {
+          throw new Error('hourly_rate must be a number greater than 0.');
+        }
+      } else if (!selectedId) {
+        throw new Error('hourly_rate is required.');
       }
 
       const skills = parseSkills(form.skills);
@@ -170,20 +184,25 @@ export default function AdminCleanersPage() {
         // Update always targets selectedId -- the id captured when this
         // row was loaded into the form -- never anything inferred from
         // the currently-rendered table.
+        const payload: Record<string, unknown> = {
+          name: trimmedName,
+          email: trimmedEmail,
+          phone: form.phone,
+          dbs_status: form.dbs_status,
+          dbs_check_date: form.dbs_check_date,
+          emergency_contact: form.emergency_contact,
+          skills: skills ?? [],
+          notes: form.notes,
+        };
+        // Only included when the admin actually supplied a rate --
+        // omitting the key entirely means the Route Handler/RPC never
+        // touch hourly_rate or cleaner_pay_rates for this save.
+        if (hourlyRate !== null) payload.hourly_rate = hourlyRate;
+
         res = await fetch(`/api/admin/cleaners/${selectedId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: trimmedName,
-            email: trimmedEmail,
-            phone: form.phone,
-            dbs_status: form.dbs_status,
-            dbs_check_date: form.dbs_check_date,
-            emergency_contact: form.emergency_contact,
-            skills: skills ?? [],
-            notes: form.notes,
-            hourly_rate: hourlyRate,
-          }),
+          body: JSON.stringify(payload),
         });
       } else {
         const payload: Record<string, unknown> = {
