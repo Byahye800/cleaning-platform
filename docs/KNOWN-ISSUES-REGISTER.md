@@ -114,3 +114,30 @@ No migration file was edited as part of the Checkpoint 3 Remediation — per exp
 **Production:** not touched. This migration was applied to staging only.
 
 **STAGING-001:** unaffected, remains Open (see above).
+
+
+---
+
+## ADMIN-CLEANERS-001
+
+**Title:** Admin create/edit-cleaner write path removed and never rebuilt behind the Route Handler architecture
+
+**Description:** The admin Cleaners page (`/admin/cleaners`) had lost its ability to create or edit cleaner records. The prior direct-`supabase.from('cleaners')` write path had been removed as part of an earlier security hardening pass but was never replaced with an equivalent path through server-side Route Handlers, leaving admins unable to onboard or update cleaner records through the UI at all.
+
+**Root Cause:** An incomplete migration away from direct browser-side Supabase writes: the read path (`select()`) and the RLS/column-split security model were updated, but the corresponding write RPCs and their Route Handler wrappers were never built, so the UI's Save action had nothing to call.
+
+**Affected Area:** `/admin/cleaners` (create + edit), `src/app/api/admin/cleaners/route.ts`, `src/app/api/admin/cleaners/[id]/route.ts`, `admin_create_cleaner`/`admin_update_cleaner` RPCs.
+
+**Production Impact:** Not assessed as part of this fix — this defect exists identically in production's codebase; production has not been re-tested as part of this remediation.
+
+**Staging Impact:** Confirmed present and now confirmed fixed, live on `https://cleaning-platform-staging.vercel.app`.
+
+**Status:** RESOLVED — **LOCKED (2026-07-21)**, per `docs/ENGINEERING-PROTOCOL.md`.
+
+**Priority:** High while open — blocked all cleaner onboarding/record-maintenance through the admin UI, no workaround short of direct DB access.
+
+**Resolution:** New `admin_create_cleaner`/`admin_update_cleaner` Postgres functions (re-check `auth.uid()` + admin role internally, validate required fields/hourly_rate/dbs_status, write `activity_log` rows, documented in `supabase/0031_admin_cleaner_write_rpcs.sql`, commit `3d67841`) called exclusively from two new Route Handlers — `src/app/api/admin/cleaners/route.ts` (POST, commit `ddcc813`) and `src/app/api/admin/cleaners/[id]/route.ts` (PATCH, commit `89c1571`). `src/app/admin/cleaners/page.tsx` refactored to call these routes instead of any direct Supabase write, with client-side pre-validation and per-field error banners (commit `c3ed0bd`). Delete functionality was intentionally not restored — out of scope for this fix, deferred by explicit decision.
+
+**Verification:** Full live E2E cycle performed against deployed staging (not static/code-only): Create and Edit both confirmed via the actual UI, HTTP status codes captured via the browser network log (201 create, 200 edit, 401 unauthenticated create/edit, 409 duplicate email), and database state independently confirmed via direct SQL against `cleaners`/`cleaner_pay_rates` on staging (`jwdfzgibrijcyypibhjw`). Confirmed zero direct browser-side Supabase writes remain (`page.tsx`'s only Supabase call is a read-only `select()` in `load()`). Regression-checked via commit diff (only the 3 files above touched) plus live spot-checks of the cleaner activation page, the invitation-lifecycle activity log, and `/admin/payroll` (`PAYROLL-TRIGGER-001` untouched). One disclosed, accepted limitation: the non-admin-authenticated-session denial case rests on a code read of `requireAdmin()` plus a live DB role query, not a full live session test, since no non-admin test credentials were available and generating one would have required sending a real email — declined without explicit authorization.
+
+**Production:** not touched. This fix was committed to `main` (used for both production and staging deploys in this repository) but has not been separately verified against production traffic.
