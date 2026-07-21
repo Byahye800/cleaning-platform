@@ -129,25 +129,41 @@ export default function AdminDashboardPage() {
       const jobIds = [...new Set(activity.map((r) => r.entity_id))];
       const actorIds = [...new Set(activity.map((r) => r.actor_id).filter((id): id is string => id !== null))];
 
-      const [jobsForFeedRes, cleanersForFeedRes] = await Promise.all([
+      const [jobsForFeedRes, cleanersForFeedRes, clientsForFeedRes] = await Promise.all([
         jobIds.length > 0
           ? supabase.from('jobs').select('id, address').in('id', jobIds)
           : Promise.resolve({ data: [] as { id: string; address: string }[], error: null }),
         actorIds.length > 0
           ? supabase.from('cleaners').select('user_id, name').in('user_id', actorIds)
           : Promise.resolve({ data: [] as { user_id: string; name: string }[], error: null }),
+        actorIds.length > 0
+          ? supabase.from('clients').select('user_id, name').in('user_id', actorIds)
+          : Promise.resolve({ data: [] as { user_id: string; name: string }[], error: null }),
       ]);
       if (jobsForFeedRes.error) throw jobsForFeedRes.error;
       if (cleanersForFeedRes.error) throw cleanersForFeedRes.error;
+      if (clientsForFeedRes.error) throw clientsForFeedRes.error;
 
       const addressByJobId = new Map((jobsForFeedRes.data ?? []).map((j) => [j.id, j.address]));
       const cleanerNameByUserId = new Map((cleanersForFeedRes.data ?? []).map((c) => [c.user_id, c.name]));
+      const clientNameByUserId = new Map((clientsForFeedRes.data ?? []).map((c) => [c.user_id, c.name]));
 
+      // Actor resolution mirrors resolveActorName in admin/jobs/[id]/page.tsx:
+      // cleaner lookup, then client lookup, then a safe fallback. Unlike the
+      // job-detail page (which only ever sees cleaner/client/admin actors on
+      // a single job), the dashboard feed also sees actor_id === null
+      // (Stripe, handled above) and genuine admin actors -- an actor found in
+      // neither table is assumed to be an admin, since every admin action in
+      // this codebase is attributed to auth.uid() of an admin user_roles row,
+      // and admins have no cleaners/clients row of their own.
       setActivityItems(
         activity.map((row) => {
           const address = row.entity_type === 'job' ? addressByJobId.get(row.entity_id) : undefined;
           const jobLabel = address ? `job at ${address}` : `job #${row.entity_id.slice(0, 8)}`;
-          const actorName = row.actor_id === null ? 'Stripe' : cleanerNameByUserId.get(row.actor_id) ?? 'Admin';
+          const actorName =
+            row.actor_id === null
+              ? 'Stripe'
+              : cleanerNameByUserId.get(row.actor_id) ?? clientNameByUserId.get(row.actor_id) ?? 'Admin';
           return {
             id: row.id,
             description: describeActivity(row, jobLabel, actorName),
