@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Calendar, ClipboardList, HardHat, LayoutDashboard, ListChecks, PoundSterling, Users, type LucideIcon } from 'lucide-react';
+import { Calendar, ClipboardList, HardHat, LayoutDashboard, ListChecks, Mail, PoundSterling, Users, type LucideIcon } from 'lucide-react';
 import LogoutButton from '@/components/LogoutButton';
 import NotificationBadge from '@/components/NotificationBadge';
 import { color, spacing, radius, font } from '@/lib/theme';
@@ -25,6 +25,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/admin/clients', label: 'Clients', icon: Users },
       { href: '/admin/cleaners', label: 'Cleaners', icon: HardHat },
+      { href: '/admin/invitations', label: 'Invitations', icon: Mail },
     ],
   },
   {
