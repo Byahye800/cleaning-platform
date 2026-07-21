@@ -38,6 +38,15 @@ type Issue = {
 };
 type IssueComment = { id: string; issue_id: string; author: string; author_role: string; body: string; created_at: string };
 
+function resolveActorName(
+  actorId: string | null,
+  cleanerNameByUserId: Map<string, string>,
+  clientNameByUserId: Map<string, string>
+): string {
+  if (actorId === null) return 'Stripe';
+  return cleanerNameByUserId.get(actorId) ?? clientNameByUserId.get(actorId) ?? 'Admin';
+}
+
 export default function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
@@ -209,11 +218,24 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
             ? await supabase.from('cleaners').select('user_id, name').in('user_id', actorIds)
             : { data: [] as { user_id: string; name: string }[], error: null };
         if (actorsRes.error) throw actorsRes.error;
+        // CLIENT-ISSUES-001: activity_log rows can now also be authored by a
+        // client (issue.reported / issue.comment_added via client_report_issue
+        // / client_add_issue_comment). Previously only `cleaners` was queried
+        // here, so any non-cleaner, non-null actor silently fell back to
+        // "Admin" -- a client's own activity would have been mislabeled.
+        // Resolved via one small shared helper (resolveActorName) rather than
+        // duplicating the cleaner/client lookup logic inline.
+        const clientActorsRes =
+          actorIds.length > 0
+            ? await supabase.from('clients').select('user_id, name').in('user_id', actorIds)
+            : { data: [] as { user_id: string; name: string }[], error: null };
+        if (clientActorsRes.error) throw clientActorsRes.error;
         const cleanerNameByUserId = new Map((actorsRes.data ?? []).map((c) => [c.user_id, c.name]));
+        const clientNameByUserId = new Map((clientActorsRes.data ?? []).map((c) => [c.user_id, c.name]));
 
         setActivityItems(
           activity.map((row) => {
-            const actorName = row.actor_id === null ? 'Stripe' : cleanerNameByUserId.get(row.actor_id) ?? 'Admin';
+            const actorName = resolveActorName(row.actor_id, cleanerNameByUserId, clientNameByUserId);
             return {
               id: row.id,
               description: describeActivity(row, 'this job', actorName),
