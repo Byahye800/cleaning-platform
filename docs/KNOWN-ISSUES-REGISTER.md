@@ -143,3 +143,53 @@ No migration file was edited as part of the Checkpoint 3 Remediation — per exp
 **Production:** not touched. This fix was committed to `main` (used for both production and staging deploys in this repository) but has not been separately verified against production traffic.
 
 **Closure update (2026-07-21):** Per explicit engineering instruction, ADMIN-CLEANERS-001 is now recorded as **CLOSED** (in addition to RESOLVED/LOCKED above). This module is the production baseline for admin cleaner create/edit. No further work is to be performed within this module unless (1) a verified production defect is identified, or (2) an approved enhancement requires a separate engineering cycle — in either case, work must begin as a new engineering task and follow the full Production Engineering Confirmation Cycle (DESIGN through LOCK) rather than reopening this checkpoint.
+
+---
+
+## ADMIN-CLEANERS-002
+
+**Title:** Admin Cleaner edit form incorrectly required `hourly_rate` for every save, including field-scoped updates to cleaners with no payroll record
+
+**Description:** The admin Cleaners page (`/admin/cleaners`) unconditionally required `hourly_rate` before allowing *any* save — create or edit alike. This silently blocked correcting any other field (e.g. `name`) on a self-service-onboarded cleaner who has no `cleaner_pay_rates` row yet, since such a cleaner has no hourly rate to leave populated and admins had no way to know one was expected. The failure was silent: a client-side validation `throw` set an error banner rendered at the very top of the page, above the "Invite a cleaner" section, easy to miss while scrolled down to the edit form — no network request was ever sent, no server-side error.
+
+**Root Cause:** discovered while attempting a routine one-time data correction (backfilling a blank `name` on a legacy record via ADMIN-CLEANERS-001's approved Admin Edit workflow, itself a follow-up to the blank-Name data-integrity investigation below). Investigation found the requirement was purely a client-side artifact in `save()` — the PATCH Route Handler (`src/app/api/admin/cleaners/[id]/route.ts`) and the `admin_update_cleaner` RPC (migration `0031`) already supported field-scoped partial updates via a `p_fields text[]` parameter, and already treated `hourly_rate` as entirely optional unless the caller supplied it. The client never took advantage of that flexibility — it always sent `hourly_rate` and always validated it as required, regardless of create vs. edit mode.
+
+**Affected Area:** `src/app/admin/cleaners/page.tsx`'s `save()` function only. No server, RPC, or schema change was needed or made.
+
+**Production Impact:** Not assessed as part of this fix — same client-side code path exists in production; production was not re-tested as part of this remediation.
+
+**Staging Impact:** Confirmed present, now confirmed fixed, live on `https://cleaning-platform-staging.vercel.app`.
+
+**Status:** RESOLVED — **LOCKED (2026-07-21)**, per `docs/ENGINEERING-PROTOCOL.md`. This is a defect found and fixed against the LOCKED ADMIN-CLEANERS-001 baseline, opened and closed as its own engineering cycle (ADMIN-CLEANERS-002) per that module's closure terms — it did not reopen ADMIN-CLEANERS-001.
+
+**Priority:** Medium — blocked non-payroll corrections (e.g. Name) on any cleaner without an existing `cleaner_pay_rates` row; no data-integrity or security exposure, and a workaround existed in principle (inventing a placeholder rate) that was explicitly rejected as unacceptable rather than used.
+
+**Resolution:** `src/app/admin/cleaners/page.tsx`'s `save()` (commit `4c66bb0`) — `hourly_rate` remains required (numeric, >0) only when creating a new cleaner. In edit mode it is optional: if left blank, the field is omitted from the PATCH payload entirely (never sent as `null`/`0`/a placeholder), so the Route Handler/RPC never touch `hourly_rate` or `cleaner_pay_rates` for that save. If a value *is* supplied, in either mode, it is still validated as a positive number before submission. No placeholder pay rate was ever used at any point, live or otherwise; no direct SQL was used to correct data — the fix is a legitimate application-workflow change, not a bypass. Diff-confirmed as the only change in the 476-line file.
+
+**Verification:** Full live E2E cycle against deployed staging — (1) edited the legacy cleaner (`b7b43176-eae0-424e-b44d-3e5f4ce7df77`, `bakar.yahye+cleanerv2a@gmail.com`) Name with `hourly_rate` left blank: PATCH succeeded, Name confirmed updated in the database via direct SQL, `cleaner_pay_rates` row count for that cleaner confirmed 0 both before and after (no row created), Admin list and detail page both confirmed showing the corrected Name; (2) Create Cleaner with `hourly_rate` blank still correctly rejected client-side ("hourly_rate is required."); (3) Edit mode with an invalid supplied `hourly_rate` (`-5`) still correctly rejected ("hourly_rate must be a number greater than 0."), re-queried the database afterward and confirmed nothing was written. `tsc --noEmit` clean; ESLint shows only the single pre-existing, unrelated baseline error (line 122, `useEffect`/`setState`), confirmed identical on the unmodified file. No direct browser database writes were introduced anywhere in this change — all paths remain the existing `fetch()` calls to the Route Handlers.
+
+**Production:** not touched. Committed to `main` (used for both staging and production deploys in this repository) but not separately verified against production traffic.
+
+**Related:** the blank-Name value on the legacy record this fix was originally in service of correcting was itself investigated separately and determined to be residual bad data from a since-superseded function version, not a defect in the currently-deployed onboarding code — see the "blank Name" investigation referenced in `docs/memory/SESSION-LOG.md` (2026-07-21). Onboarding never collecting a real Name at all (the field is always populated from the invitee's email at finalize-time) is a separate, legitimate enhancement gap, not a defect — tracked below as `NEEDS-ATTENTION-001` alongside the related dashboard gap.
+
+---
+
+## NEEDS-ATTENTION-001
+
+**Title:** "Needs your attention" admin dashboard panel has no category for cleaner/client records with missing mandatory profile information
+
+**Description:** `src/app/admin/_dashboard/ActionItems.tsx` (the admin dashboard's "Needs your attention" panel) renders exactly four hardcoded categories — failed invoices, completed-but-uninvoiced jobs, unassigned-today jobs, and open issues — sourced from `src/app/admin/page.tsx`'s data-loading code, which only queries invoices/unassigned-jobs/issues. There is no category, anywhere in this panel or its data source, for a cleaner or client record with missing mandatory profile information (e.g. a blank `name`), nor more broadly for any pending-cleaner-review condition. Such a record is invisible to the admin dashboard entirely — it can only be found by manually browsing the full Cleaners/Clients list.
+
+**Root Cause:** the panel was designed and built (site redesign step 5, see `docs/SESSION-LOG.md` 2026-07-05) around invoice/job-pipeline exceptions only; profile-completeness/data-integrity gaps on cleaner/client records were never in its original scope and have not been added since.
+
+**Affected Area:** `src/app/admin/_dashboard/ActionItems.tsx`, `src/app/admin/page.tsx`'s dashboard data-loading code.
+
+**Discovered:** 2026-07-21, during the ADMIN-CLEANERS-001/002 blank-Name investigation and data correction — confirmed by direct code inspection that no such category exists (not merely that it wasn't firing for this specific record).
+
+**Status:** Open — **verified enhancement gap, not yet approved for implementation.** Per explicit instruction, this module is not to be modified until the enhancement is formally approved and opened as its own engineering cycle, following the same DESIGN → BUILD → COMPILE → FUNCTION TEST → SECURITY → REGRESSION → LIVE E2E VERIFY → EVIDENCE → LOCK cycle used for ADMIN-CLEANERS-001/002. This entry exists so the gap is not lost, not as authorization to build it.
+
+**Priority:** Low-Medium — no security or data-integrity exposure (the underlying data is intact and reachable by manually browsing the list), but it means a genuine admin-action-needed condition (e.g. a newly onboarded cleaner missing a real name) can persist indefinitely without surfacing anywhere an admin is likely to look.
+
+**Suggested scope for a future approved cycle (not yet designed in detail):** a fifth "Needs your attention" category covering cleaner/client records with missing mandatory profile fields (starting with `name`, since that is the concretely observed case), sourced by a new or extended query in `admin/page.tsx`'s dashboard data-loading code, rendered the same way as the four existing categories in `ActionItems.tsx`. Whether this should also cover other categories floated during the original review (failed invitations, checklist failures, attendance corrections, payroll exceptions, outstanding client issues) is an open design question for that future cycle, not decided here.
+
+**Related:** `ADMIN-CLEANERS-002` above (the specific record whose blank Name prompted this finding).
