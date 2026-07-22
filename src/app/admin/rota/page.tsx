@@ -187,7 +187,7 @@ export default function AdminRotaPage() {
         </button>
         <div style={{ fontWeight: font.weight.medium, minWidth: 220, textAlign: 'center' }}>
           {days[0].toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-          {' â '}
+          {' – '}
           {days[6].toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
         </div>
         <button onClick={() => setWeekStart((w) => addDays(w, 7))} style={navBtnStyle} title="Next week">
@@ -196,14 +196,14 @@ export default function AdminRotaPage() {
         <button onClick={() => setWeekStart(startOfWeek(new Date()))} style={{ ...navBtnStyle, width: 'auto', padding: '0 12px' }}>
           This week
         </button>
-        {loading && <span style={{ color: color.textSecondary, fontSize: font.size.sm }}>Loadingâ¦</span>}
+        {loading && <span style={{ color: color.textSecondary, fontSize: font.size.sm }}>Loading…</span>}
       </div>
 
       {editingJob && (
         <section style={editSectionStyle}>
           <h3 style={{ marginTop: 0 }}>Edit job</h3>
           <div style={{ marginBottom: spacing.md, color: color.textSecondary, fontSize: font.size.base }}>
-            {editingJob.address} â {clients.find((c) => c.id === editingJob.client_id)?.name ?? editingJob.client_id}
+            {editingJob.address} — {clients.find((c) => c.id === editingJob.client_id)?.name ?? editingJob.client_id}
           </div>
           <div style={{ display: 'flex', gap: spacing.md, flexWrap: 'wrap' }}>
             <label style={labelStyle}>
@@ -233,7 +233,7 @@ export default function AdminRotaPage() {
           </div>
           <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
             <button onClick={saveEdit} disabled={busy} style={primaryBtn}>
-              {busy ? 'Savingâ¦' : 'Save changes'}
+              {busy ? 'Saving…' : 'Save changes'}
             </button>
             <button onClick={() => setEditingId(null)} disabled={busy} style={secondaryBtn}>
               Cancel
@@ -302,7 +302,7 @@ export default function AdminRotaPage() {
                           }}
                           title="Click to edit time or reassign"
                         >
-                          <div style={{ fontWeight: font.weight.medium }}>{job.scheduled_time ? job.scheduled_time.slice(0, 5) : 'â'}</div>
+                          <div style={{ fontWeight: font.weight.medium }}>{job.scheduled_time ? job.scheduled_time.slice(0, 5) : '—'}</div>
                           <div style={{ color: color.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {job.address}
                           </div>
