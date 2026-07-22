@@ -1,6 +1,8 @@
 # CLAUDE.md — Repo-Level Orientation for Any AI Agent
 
 > **Governance:** All engineering work, checkpoints, approvals, and completion criteria on this project are governed by [`docs/ENGINEERING-PROTOCOL.md`](docs/ENGINEERING-PROTOCOL.md). Read it before beginning any work on this project.
+>
+> **Target-state vision:** The complete target-state product vision for FM PRO is defined in [`docs/FM_PRO_SYSTEM_BLUEPRINT.md`](docs/FM_PRO_SYSTEM_BLUEPRINT.md). It defines *what* the finished platform must become; `ENGINEERING-PROTOCOL.md` remains the sole controlling authority for *how* every change is designed, built, tested, verified, documented, deployed and locked. The Blueprint does not replace, weaken, or bypass this protocol (see Blueprint Section 0), and does not remove or invalidate any already-built, already-verified functionality — everything existing remains the foundation it builds upon.
 
 Read this file first, every session, before touching anything. It exists because this project has already survived one context-loss event mid-implementation (2026-07-13, Stage 2.4) and the standing rule going forward is: **conversation memory is never the primary source of truth. This file tree is.**
 
@@ -22,6 +24,7 @@ Stack: Next.js, Supabase (Postgres + Auth + RLS + Storage), Stripe, `@supabase/s
 | "Was X actually tested, or just claimed?" | `docs/memory/VERIFICATION-REGISTER.md` |
 | "What happened in past sessions, chronologically?" | `docs/memory/SESSION-SUMMARIES/` (one file per dated session) + `docs/SESSION-LOG.md` (the original, still-maintained running log) |
 | "What's the day-to-day operational status doc?" | `docs/PROJECT-STATUS.md` (older, pre-Stage-2 focused — may be stale, cross-check against `CURRENT-STATE.md`) |
+| "What is the final target-state vision for FM PRO, and what must it become?" | `docs/FM_PRO_SYSTEM_BLUEPRINT.md` |
 
 ## Non-negotiable standing rules (full version: `docs/memory/SECURITY-MODEL.md` and the original `BUILD-STANDARDS.md`)
 
