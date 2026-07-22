@@ -4,7 +4,7 @@
 
 Running dated log of work sessions on this codebase. Newest entries at the top.
 
-## 2026-07-22 -- SCHEDULE-INTEGRITY-001: scheduling conflict-guard RPC built, deployed, and verified in production; BUILD approved, documentation package prepared for LOCK
+## 2026-07-22 -- SCHEDULE-INTEGRITY-001: scheduling conflict-guard RPC built, deployed, and verified in production; RESOLVED and LOCKED
 
 **Scope note:** fourth child cycle of `FMPRO-OPERATIONS-HARDENING-001`, continuing directly from the `CLIENT-ISSUES-001` LOCK entry immediately below. Governed by `docs/ENGINEERING-PROTOCOL.md`'s Production Engineering Confirmation Cycle.
 
@@ -26,7 +26,9 @@ Running dated log of work sessions on this codebase. Newest entries at the top.
 
 **DOCUMENTATION (this entry):** `docs/KNOWN-ISSUES-REGISTER.md` updated with a new `SCHEDULE-INTEGRITY-001` resolved-issue entry (see that file for the issue-register-formatted version of the above). `docs/memory/ACTIVE-WORK.md`'s Current task section updated to reflect this cycle's status.
 
-**Status at end of this entry:** BUILD approved. LOCK documentation package prepared and returned to the owner this session. **Not yet LOCKED** -- awaiting explicit LOCK approval in a future turn, per standing practice (this project does not self-approve its own LOCK).
+**LOCK REVIEW (owner, 2026-07-22):** LOCK approved following independent review of the engineering evidence. Accepted: BUILD implementation, migration design, scheduling algorithm documentation, concurrency documentation, rollback strategy, regression verification, and documentation updates. The SESSION-LOG.md documentation correction (removing an inaccurate staleness claim before commit) was noted positively as an example of evidence-first engineering. SCHEDULE-INTEGRITY-001 is authorised to be recorded as RESOLVED and LOCKED.
+
+**Status at end of this entry:** RESOLVED -- LOCKED (2026-07-22). Implementation frozen: no further code changes are authorised for SCHEDULE-INTEGRITY-001 unless a new verified production defect is formally opened as its own engineering cycle. Programme status: `ADMIN-CLIENTS-001`, `ADMIN-INVITATIONS-001`, `CLIENT-ISSUES-001`, and `SCHEDULE-INTEGRITY-001` are all now LOCKED. Remaining approved engineering work: `NEEDS-ATTENTION-001`, then `STAGING-001`.
 
 **Related:** fourth child cycle of the `FMPRO-OPERATIONS-HARDENING-001` programme.
 
