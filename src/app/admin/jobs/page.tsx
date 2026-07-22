@@ -103,7 +103,7 @@ export default function AdminJobsPage() {
     loadAll()
       .then((jobs) => {
         // One-time read of a `?select=<id>` deep link (e.g. from the dashboard's
-        // action items) â read directly off window.location rather than
+        // action items) — read directly off window.location rather than
         // useSearchParams so this stays a statically-rendered page with no
         // Suspense boundary needed for a value we only care about on mount.
         const selectId = new URLSearchParams(window.location.search).get('select');
@@ -381,7 +381,7 @@ export default function AdminJobsPage() {
 
         <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
           <button onClick={createJob} disabled={busy} style={primaryBtn}>
-            {busy ? 'Workingâ¦' : 'Create job'}
+            {busy ? 'Working…' : 'Create job'}
           </button>
 
           <button onClick={() => selectedId && updateJob(selectedId)} disabled={busy || !selectedId} style={secondaryPrimaryBtn}>
@@ -401,7 +401,7 @@ export default function AdminJobsPage() {
         </div>
 
         <div style={{ marginTop: 10, fontSize: 12, color: '#6b7280' }}>
-          Click a row to load it into the form. &quot;status&quot; is free text for now â use whatever value your workflow expects (e.g. pending, scheduled, completed, cancelled).
+          Click a row to load it into the form. &quot;status&quot; is free text for now — use whatever value your workflow expects (e.g. pending, scheduled, completed, cancelled).
         </div>
       </section>
 
@@ -439,9 +439,9 @@ export default function AdminJobsPage() {
                           onClick={() => pickRow(r)}
                           title="Load into edit form"
                           style={{ background: 'transparent', border: 'none', padding: 2, cursor: 'pointer', color: '#6b7280', display: 'inline-flex' }}
-                      >
-                        <Pencil size={14} />
-                      </button>
+                        >
+                          <Pencil size={14} />
+                        </button>
                       </div>
                     </td>
                     <td style={tdStyle}>{clients.find((c) => c.id === r.client_id)?.name ?? r.client_id}</td>
@@ -460,13 +460,13 @@ export default function AdminJobsPage() {
                           title={invoiceDisabledReason(r)}
                           style={secondaryPrimaryBtn}
                         >
-                          {invoicingId === r.id ? 'Sendingâ¦' : 'Send invoice'}
+                          {invoicingId === r.id ? 'Sending…' : 'Send invoice'}
                         </button>
                       </div>
                     </td>
                   </tr>
                 ))
-              }
+              )}
             </tbody>
           </table>
         </div>
