@@ -274,3 +274,27 @@ No migration file was edited as part of the Checkpoint 3 Remediation — per exp
 **Production:** Committed to `main` (used for both staging and production deploys in this repository) but not separately verified against production traffic.
 
 **Related:** third child cycle of the `FMPRO-OPERATIONS-HARDENING-001` programme. Next child cycle: `SCHEDULE-INTEGRITY-001`.
+
+---
+
+## SCHEDULE-INTEGRITY-001
+
+**Title:** No conflict detection on job scheduling -- cleaners could be double-booked
+
+**Description:** `jobs.cleaner_id`, `scheduled_date`, `scheduled_time`, and `duration_hours` were writable directly from two independent client-side call sites -- `admin/jobs/page.tsx` (`createJob`/`updateJob`) and `admin/rota/page.tsx` (`saveEdit`) -- each issuing a raw `supabase.from('jobs').update(...)`/`.insert(...)` with zero conflict detection. An admin could assign the same cleaner to two overlapping jobs with no warning, and two admins acting on the same cleaner at the same time could race past even an application-level check.
+
+**Root Cause:** scheduling fields were treated as ordinary editable columns, written independently from two separate pages, with no server-side invariant enforcing that a given cleaner's assigned jobs don't overlap in time, and no serialization of concurrent writes targeting the same cleaner.
+
+**Affected Area:** admin Jobs page, admin Rota page, cleaner schedule integrity.
+
+**Production Impact:** live data was confirmed (read-only, prior to the fix) to have zero rows with a non-null `cleaner_id`, so no pre-existing double-bookings existed to reconcile. The gap was real but latent -- no known double-booking had actually occurred by the time this was fixed.
+
+**Status:** RESOLVED (2026-07-22)
+
+**Priority:** Medium-High -- a genuine operational-integrity gap (a double-booked cleaner is a real-world scheduling failure, not just a data-quality issue), but not a security vulnerability and not cross-tenant/cross-role exploitable.
+
+**Resolution:** resolved via migration `supabase/0033_schedule_conflict_guard.sql`, applied live, which adds `public.admin_assign_job_schedule(p_job_id, p_cleaner_id, p_scheduled_date, p_scheduled_time, p_duration_hours)` -- a `SECURITY DEFINER` RPC that is now the single validated write path for those four columns. The function re-derives admin authorization server-side (identical role-check pattern to the existing admin cleaner-write RPCs), takes a `pg_advisory_xact_lock` keyed on the target cleaner id to close the check-then-act concurrency race, and rejects any assignment that overlaps an existing non-cancelled job for the same cleaner (half-open interval overlap, plus an explicit equal-start-instant check to catch zero/NULL-duration collisions the half-open test alone can't see). `admin/jobs/page.tsx` and `admin/rota/page.tsx` were rewritten so scheduling writes go exclusively through this RPC; every other `jobs` column (status, notes, address, price via `job_billing`, etc.) continues through ordinary table writes, untouched by this change. Full algorithm and concurrency-design writeup: see `docs/SESSION-LOG.md`, 2026-07-22 entry.
+
+**Verification:** live functional test battery (successful assignment, conflict rejection, non-conflicting adjacent slot, cancelled-job exclusion from the conflict check, clearing an assignment, and the unscheduled-job skip-path) plus a production regression pass (Dashboard/Rota/Jobs pages render correctly, non-scheduling edits unaffected). Commit history includes a self-discovered-and-corrected transcription defect from an earlier commit in this same change (`972279c` -> `8fc0d64` for `admin/jobs/page.tsx`, `fbf993d` -> `0079cb9` for `admin/rota/page.tsx`) -- a base64/atob decoding bug in the commit tooling that corrupted non-ASCII characters and dropped one character, unrelated to the RPC logic itself, caught by the pre-existing Vercel build check and by an independent length/checksum diff against local source before being marked resolved. See `docs/SESSION-LOG.md`, 2026-07-22 entry, for the full evidence trail.
+
+**Related:** fourth child cycle of the `FMPRO-OPERATIONS-HARDENING-001` programme.
