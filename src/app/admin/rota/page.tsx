@@ -13,6 +13,7 @@ type JobRow = {
   service_type: string | null;
   scheduled_date: string | null;
   scheduled_time: string | null;
+  duration_hours: number | null;
   status: string;
 };
 
@@ -49,7 +50,7 @@ function withAlpha(hex: string, alpha: number) {
 }
 
 const UNASSIGNED_KEY = 'unassigned';
-const JOB_SELECT = 'id, client_id, cleaner_id, address, service_type, scheduled_date, scheduled_time, status';
+const JOB_SELECT = 'id, client_id, cleaner_id, address, service_type, scheduled_date, scheduled_time, duration_hours, status';
 
 export default function AdminRotaPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
@@ -142,14 +143,25 @@ export default function AdminRotaPage() {
 
   async function saveEdit() {
     if (!editingId) return;
+    const target = jobs.find((j) => j.id === editingId);
+    if (!target) return;
     setBusy(true);
     setError(null);
     try {
-      const payload = {
-        scheduled_time: editForm.scheduled_time || null,
-        cleaner_id: editForm.cleaner_id || null,
-      };
-      const { error } = await supabase.from('jobs').update(payload).eq('id', editingId);
+      // Scheduling fields (cleaner_id, scheduled_date, scheduled_time,
+      // duration_hours) are written exclusively through
+      // admin_assign_job_schedule (SCHEDULE-INTEGRITY-001) -- this is the
+      // only place in the app permitted to change them, and it rejects the
+      // write server-side if it would double-book the cleaner. scheduled_date
+      // and duration_hours aren't editable from this grid, so the job's
+      // current values are passed through unchanged.
+      const { error } = await supabase.rpc('admin_assign_job_schedule', {
+        p_job_id: editingId,
+        p_cleaner_id: editForm.cleaner_id || null,
+        p_scheduled_date: target.scheduled_date,
+        p_scheduled_time: editForm.scheduled_time || null,
+        p_duration_hours: target.duration_hours,
+      });
       if (error) throw error;
       setEditingId(null);
       await loadJobs();
@@ -175,7 +187,7 @@ export default function AdminRotaPage() {
         </button>
         <div style={{ fontWeight: font.weight.medium, minWidth: 220, textAlign: 'center' }}>
           {days[0].toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-          {' – '}
+          {' â '}
           {days[6].toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
         </div>
         <button onClick={() => setWeekStart((w) => addDays(w, 7))} style={navBtnStyle} title="Next week">
@@ -184,14 +196,14 @@ export default function AdminRotaPage() {
         <button onClick={() => setWeekStart(startOfWeek(new Date()))} style={{ ...navBtnStyle, width: 'auto', padding: '0 12px' }}>
           This week
         </button>
-        {loading && <span style={{ color: color.textSecondary, fontSize: font.size.sm }}>Loading…</span>}
+        {loading && <span style={{ color: color.textSecondary, fontSize: font.size.sm }}>Loadingâ¦</span>}
       </div>
 
       {editingJob && (
         <section style={editSectionStyle}>
           <h3 style={{ marginTop: 0 }}>Edit job</h3>
           <div style={{ marginBottom: spacing.md, color: color.textSecondary, fontSize: font.size.base }}>
-            {editingJob.address} — {clients.find((c) => c.id === editingJob.client_id)?.name ?? editingJob.client_id}
+            {editingJob.address} â {clients.find((c) => c.id === editingJob.client_id)?.name ?? editingJob.client_id}
           </div>
           <div style={{ display: 'flex', gap: spacing.md, flexWrap: 'wrap' }}>
             <label style={labelStyle}>
@@ -221,7 +233,7 @@ export default function AdminRotaPage() {
           </div>
           <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
             <button onClick={saveEdit} disabled={busy} style={primaryBtn}>
-              {busy ? 'Saving…' : 'Save changes'}
+              {busy ? 'Savingâ¦' : 'Save changes'}
             </button>
             <button onClick={() => setEditingId(null)} disabled={busy} style={secondaryBtn}>
               Cancel
@@ -290,7 +302,7 @@ export default function AdminRotaPage() {
                           }}
                           title="Click to edit time or reassign"
                         >
-                          <div style={{ fontWeight: font.weight.medium }}>{job.scheduled_time ? job.scheduled_time.slice(0, 5) : '—'}</div>
+                          <div style={{ fontWeight: font.weight.medium }}>{job.scheduled_time ? job.scheduled_time.slice(0, 5) : 'â'}</div>
                           <div style={{ color: color.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {job.address}
                           </div>
