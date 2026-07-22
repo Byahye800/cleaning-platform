@@ -103,7 +103,7 @@ export default function AdminJobsPage() {
     loadAll()
       .then((jobs) => {
         // One-time read of a `?select=<id>` deep link (e.g. from the dashboard's
-        // action items) — read directly off window.location rather than
+        // action items) â read directly off window.location rather than
         // useSearchParams so this stays a statically-rendered page with no
         // Suspense boundary needed for a value we only care about on mount.
         const selectId = new URLSearchParams(window.location.search).get('select');
@@ -114,26 +114,39 @@ export default function AdminJobsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Scheduling fields (cleaner_id, scheduled_date, scheduled_time,
+  // duration_hours) are deliberately NOT part of this payload -- they are
+  // written exclusively through admin_assign_job_schedule (see
+  // scheduleFormValues()/the RPC call in createJob/updateJob below), which
+  // is the single validated scheduling write path introduced by
+  // SCHEDULE-INTEGRITY-001. This function now only ever touches the
+  // non-scheduling columns of jobs.
   function buildJobPayload() {
     const payload: any = {
       client_id: form.client_id,
-      cleaner_id: form.cleaner_id ? form.cleaner_id : null,
       address: form.address,
       service_type: form.service_type || null,
-      scheduled_date: form.scheduled_date || null,
-      scheduled_time: form.scheduled_time || null,
-      duration_hours: form.duration_hours ? Number(form.duration_hours) : null,
       notes: form.notes || null,
       status: form.status || 'pending',
     };
 
     if (!payload.client_id) throw new Error('client_id is required');
     if (!payload.address) throw new Error('address is required');
-    if (form.duration_hours && Number.isNaN(payload.duration_hours)) {
-      throw new Error('duration_hours must be a number');
-    }
 
     return payload;
+  }
+
+  function scheduleFormValues() {
+    const duration = form.duration_hours ? Number(form.duration_hours) : null;
+    if (form.duration_hours && Number.isNaN(duration)) {
+      throw new Error('duration_hours must be a number');
+    }
+    return {
+      p_cleaner_id: form.cleaner_id ? form.cleaner_id : null,
+      p_scheduled_date: form.scheduled_date || null,
+      p_scheduled_time: form.scheduled_time || null,
+      p_duration_hours: duration,
+    };
   }
 
   function extractPrice(): number | null {
@@ -152,8 +165,10 @@ export default function AdminJobsPage() {
   async function createJob() {
     setBusy(true);
     setError(null);
+    let insertedId: string | null = null;
     try {
       const payload = buildJobPayload();
+      const scheduleValues = scheduleFormValues();
       const price = extractPrice();
       const { data: inserted, error: insertError } = await supabase
         .from('jobs')
@@ -161,6 +176,18 @@ export default function AdminJobsPage() {
         .select('id')
         .single();
       if (insertError) throw insertError;
+      insertedId = inserted.id;
+
+      // The row is created first (unscheduled/unassigned), then scheduled
+      // through the one validated RPC. If the requested schedule conflicts
+      // with another job for the same cleaner, the RPC rejects it and the
+      // job is left in its unscheduled state (visible in Rota's "Unscheduled
+      // jobs" section) rather than silently double-booking anyone.
+      const { error: scheduleError } = await supabase.rpc('admin_assign_job_schedule', {
+        p_job_id: inserted.id,
+        ...scheduleValues,
+      });
+      if (scheduleError) throw scheduleError;
 
       const { error: billingError } = await supabase.from('job_billing').upsert({ job_id: inserted.id, price });
       if (billingError) throw billingError;
@@ -175,11 +202,11 @@ export default function AdminJobsPage() {
 
       setSelectedId(null);
       setForm({ ...emptyForm });
-      await loadAll();
     } catch (e: any) {
       setError(e?.message ?? String(e));
     } finally {
       setBusy(false);
+      if (insertedId) await loadAll();
     }
   }
 
@@ -188,8 +215,18 @@ export default function AdminJobsPage() {
     setError(null);
     try {
       const payload = buildJobPayload();
+      const scheduleValues = scheduleFormValues();
       const price = extractPrice();
       const previousStatus = rows.find((r) => r.id === id)?.status;
+
+      // Scheduling change is attempted first: if it would double-book the
+      // cleaner, the RPC rejects it and nothing about this job changes --
+      // not the schedule, not status/notes/etc below.
+      const { error: scheduleError } = await supabase.rpc('admin_assign_job_schedule', {
+        p_job_id: id,
+        ...scheduleValues,
+      });
+      if (scheduleError) throw scheduleError;
 
       const { error: updateError } = await supabase.from('jobs').update(payload).eq('id', id);
       if (updateError) throw updateError;
@@ -344,7 +381,7 @@ export default function AdminJobsPage() {
 
         <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
           <button onClick={createJob} disabled={busy} style={primaryBtn}>
-            {busy ? 'Working…' : 'Create job'}
+            {busy ? 'Workingâ¦' : 'Create job'}
           </button>
 
           <button onClick={() => selectedId && updateJob(selectedId)} disabled={busy || !selectedId} style={secondaryPrimaryBtn}>
@@ -364,7 +401,7 @@ export default function AdminJobsPage() {
         </div>
 
         <div style={{ marginTop: 10, fontSize: 12, color: '#6b7280' }}>
-          Click a row to load it into the form. &quot;status&quot; is free text for now — use whatever value your workflow expects (e.g. pending, scheduled, completed, cancelled).
+          Click a row to load it into the form. &quot;status&quot; is free text for now â use whatever value your workflow expects (e.g. pending, scheduled, completed, cancelled).
         </div>
       </section>
 
@@ -402,9 +439,9 @@ export default function AdminJobsPage() {
                           onClick={() => pickRow(r)}
                           title="Load into edit form"
                           style={{ background: 'transparent', border: 'none', padding: 2, cursor: 'pointer', color: '#6b7280', display: 'inline-flex' }}
-                        >
-                          <Pencil size={14} />
-                        </button>
+                      >
+                        <Pencil size={14} />
+                      </button>
                       </div>
                     </td>
                     <td style={tdStyle}>{clients.find((c) => c.id === r.client_id)?.name ?? r.client_id}</td>
@@ -423,13 +460,13 @@ export default function AdminJobsPage() {
                           title={invoiceDisabledReason(r)}
                           style={secondaryPrimaryBtn}
                         >
-                          {invoicingId === r.id ? 'Sending…' : 'Send invoice'}
+                          {invoicingId === r.id ? 'Sendingâ¦' : 'Send invoice'}
                         </button>
                       </div>
                     </td>
                   </tr>
                 ))
-              )}
+              }
             </tbody>
           </table>
         </div>
